@@ -1,0 +1,296 @@
+import { Router } from 'express';
+import crypto from 'node:crypto';
+import { simpleParser } from 'mailparser';
+import { config } from '../config.js';
+import { db } from '../db.js';
+
+export const apiRouter = Router();
+
+// Adjective + Noun words for friendly random email addresses
+const ADJECTIVES = ['quick', 'brave', 'silent', 'bright', 'cyber', 'swift', 'smart', 'vivid', 'lucky', 'cosmic', 'zen', 'hyper', 'mystic', 'neon', 'shadow'];
+const NOUNS = ['fox', 'eagle', 'tiger', 'wolf', 'hawk', 'storm', 'wave', 'byte', 'spark', 'coder', 'star', 'pilot', 'falcon', 'nebula', 'shield'];
+
+function generateRandomAddress(domain) {
+  const chosenDomain = domain && config.domains.includes(domain.toLowerCase())
+    ? domain.toLowerCase()
+    : config.defaultDomain;
+
+  const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
+  const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)];
+  const randomSuffix = crypto.randomBytes(3).toString('hex'); // 6 hex chars
+
+  return `${adj}.${noun}.${randomSuffix}@${chosenDomain}`;
+}
+
+// 1. Get service config & supported domains
+apiRouter.get('/config', (req, res) => {
+  res.json({
+    success: true,
+    title: config.siteTitle,
+    domains: config.domains,
+    defaultDomain: config.defaultDomain,
+    emailTtlMinutes: config.emailTtlMinutes,
+    maxEmailsPerMailbox: config.maxEmailsPerMailbox,
+  });
+});
+
+// 2. Generate new random mailbox
+apiRouter.post('/mailbox/generate', (req, res) => {
+  try {
+    const requestedDomain = req.body?.domain || req.query?.domain;
+    const address = generateRandomAddress(requestedDomain);
+    const mailbox = db.createMailbox(address);
+
+    const ttlSeconds = config.emailTtlMinutes * 60;
+    res.json({
+      success: true,
+      address: mailbox.address,
+      createdAt: mailbox.created_at,
+      expiresAt: mailbox.created_at + ttlSeconds,
+      ttlMinutes: config.emailTtlMinutes,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 3. Create or access custom mailbox
+apiRouter.post('/mailbox/custom', (req, res) => {
+  try {
+    const { username, domain } = req.body || {};
+
+    if (!username || typeof username !== 'string') {
+      return res.status(400).json({ success: false, error: 'Username is required' });
+    }
+
+    const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
+    if (cleanUsername.length < 3 || cleanUsername.length > 32) {
+      return res.status(400).json({
+        success: false,
+        error: 'Username must be between 3 and 32 characters and contain only letters, numbers, dots, dashes, or underscores',
+      });
+    }
+
+    const chosenDomain = domain && config.domains.includes(domain.toLowerCase())
+      ? domain.toLowerCase()
+      : config.defaultDomain;
+
+    const fullAddress = `${cleanUsername}@${chosenDomain}`;
+    const mailbox = db.createMailbox(fullAddress);
+
+    const ttlSeconds = config.emailTtlMinutes * 60;
+    res.json({
+      success: true,
+      address: mailbox.address,
+      createdAt: mailbox.created_at,
+      expiresAt: mailbox.created_at + ttlSeconds,
+      ttlMinutes: config.emailTtlMinutes,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 4. Get mailbox and email list
+apiRouter.get('/mailbox/:address', (req, res) => {
+  try {
+    const address = req.params.address.toLowerCase().trim();
+    const mailbox = db.getMailbox(address);
+
+    if (!mailbox) {
+      // Auto-create on first query so users can check any address instantly
+      const created = db.createMailbox(address);
+      return res.json({
+        success: true,
+        address: created.address,
+        createdAt: created.created_at,
+        emails: [],
+      });
+    }
+
+    const emails = db.getEmailsForMailbox(address);
+    res.json({
+      success: true,
+      address: mailbox.address,
+      createdAt: mailbox.created_at,
+      lastAccessed: mailbox.last_accessed,
+      count: emails.length,
+      emails,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 5. Delete entire mailbox
+apiRouter.delete('/mailbox/:address', (req, res) => {
+  try {
+    const address = req.params.address.toLowerCase().trim();
+    const deleted = db.deleteMailbox(address);
+    res.json({ success: true, deleted, address });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 6. Get single email detail
+apiRouter.get('/email/:id', (req, res) => {
+  try {
+    const email = db.getEmailById(req.params.id, true);
+    if (!email) {
+      return res.status(404).json({ success: false, error: 'Email not found' });
+    }
+    res.json({ success: true, email });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 7. Delete single email
+apiRouter.delete('/email/:id', (req, res) => {
+  try {
+    const deleted = db.deleteEmailById(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ success: false, error: 'Email not found' });
+    }
+    res.json({ success: true, deleted: true, id: req.params.id });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 8. Inbound Email Webhook (for Cloudflare Email Worker)
+apiRouter.post('/webhook/email', async (req, res) => {
+  try {
+    // Verify secret token
+    const authHeader = req.headers.authorization || '';
+    const secretHeader = req.headers['x-webhook-secret'] || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : secretHeader;
+
+    if (config.webhookSecret && token !== config.webhookSecret) {
+      return res.status(401).json({ success: false, error: 'Unauthorized webhook request. Invalid secret.' });
+    }
+
+    let { to, from, subject, text, html, raw, headers, attachments } = req.body || {};
+
+    // If raw MIME content was sent instead of pre-parsed JSON
+    if (raw && (!text && !html)) {
+      const parsed = await simpleParser(raw);
+      to = parsed.to?.text || to;
+      from = {
+        name: parsed.from?.value?.[0]?.name || '',
+        address: parsed.from?.value?.[0]?.address || 'unknown@example.com'
+      };
+      subject = parsed.subject || subject;
+      text = parsed.text || '';
+      html = parsed.html || '';
+      if (parsed.attachments && parsed.attachments.length > 0) {
+        attachments = parsed.attachments.map(att => ({
+          filename: att.filename,
+          contentType: att.contentType,
+          size: att.size,
+        }));
+      }
+    }
+
+    if (!to) {
+      return res.status(400).json({ success: false, error: 'Recipient email ("to") is required.' });
+    }
+
+    // Extract raw email address if format is "Name <user@domain.com>"
+    let recipientAddress = to;
+    const match = to.match(/<([^>]+)>/);
+    if (match) {
+      recipientAddress = match[1];
+    }
+    recipientAddress = recipientAddress.toLowerCase().trim();
+
+    let fromName = '';
+    let fromAddress = 'unknown@example.com';
+    if (typeof from === 'object' && from !== null) {
+      fromName = from.name || '';
+      fromAddress = from.address || 'unknown@example.com';
+    } else if (typeof from === 'string') {
+      const fromMatch = from.match(/^(.*?)\s*<([^>]+)>$/);
+      if (fromMatch) {
+        fromName = fromMatch[1].replace(/^["']|["']$/g, '').trim();
+        fromAddress = fromMatch[2].trim();
+      } else {
+        fromAddress = from.trim();
+      }
+    }
+
+    const saved = db.saveEmail({
+      mailboxAddress: recipientAddress,
+      fromName,
+      fromAddress,
+      subject: subject || '(No Subject)',
+      textBody: text || '',
+      htmlBody: html || '',
+      rawHeaders: headers || {},
+      attachments: attachments || [],
+    });
+
+    console.log(`[Email Received] To: ${recipientAddress} | From: ${fromAddress} | Subject: "${subject || ''}"`);
+
+    res.json({
+      success: true,
+      message: 'Email processed and saved successfully',
+      id: saved.id,
+      mailbox: recipientAddress,
+    });
+  } catch (error) {
+    console.error('[Webhook Error]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 9. Simulation endpoint (for local testing without needing active Cloudflare webhook yet)
+apiRouter.post('/test/simulate', async (req, res) => {
+  try {
+    const { to, fromName, fromAddress, subject, text, html } = req.body || {};
+
+    if (!to) {
+      return res.status(400).json({ success: false, error: 'Recipient "to" is required' });
+    }
+
+    const saved = db.saveEmail({
+      mailboxAddress: to,
+      fromName: fromName || 'Temple Verification Team',
+      fromAddress: fromAddress || 'noreply@service.com',
+      subject: subject || 'Your verification code is 849201',
+      textBody: text || 'Your verification code is 849201. It is valid for 10 minutes.',
+      htmlBody: html || `
+        <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f9fafb; border-radius: 8px;">
+          <h2 style="color: #4f46e5; margin-top: 0;">Welcome to Temple Mail!</h2>
+          <p>Thank you for using our disposable temporary email service.</p>
+          <div style="background: #ffffff; padding: 16px; border: 1px solid #e5e7eb; border-radius: 6px; margin: 20px 0; text-align: center;">
+            <span style="font-size: 14px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px;">Your Verification Code</span>
+            <div style="font-size: 32px; font-weight: bold; color: #111827; letter-spacing: 4px; margin-top: 8px;">849201</div>
+          </div>
+          <p style="color: #6b7280; font-size: 13px;">This is a simulated email to verify your Temp Mail setup.</p>
+        </div>
+      `,
+      rawHeaders: { 'x-simulated': 'true' },
+      attachments: [],
+    });
+
+    res.json({
+      success: true,
+      message: 'Simulated email delivered successfully',
+      email: saved,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 10. Service Statistics
+apiRouter.get('/stats', (req, res) => {
+  res.json({
+    success: true,
+    stats: db.getStats(),
+    uptime: Math.floor(process.uptime()),
+    timestamp: Math.floor(Date.now() / 1000),
+  });
+});

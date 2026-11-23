@@ -1,0 +1,14 @@
+{
+  "name": "temple-email-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Email Routing Worker for Temple Temp Mail",
+  "main": "worker.js",
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "dependencies": {
+    "postal-mime": "^2.3.1"
+  }
+}

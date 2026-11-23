@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="bn" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Temple Mail - ডিসপোজেবল টেম্পোরারি ইমেইল সার্ভিস</title>
+  <meta name="description" content="ফ্রি, নিরাপদ ও দ্রুত ডিসপোজেবল টেম্প মেইল সার্ভিস ও ওপেন এপিআই।">
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- QRCode.js for QR generator -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <link rel="stylesheet" href="/styles.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Outfit', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f5f3ff',
+              100: '#ede9fe',
+              200: '#ddd6fe',
+              300: '#c4b5fd',
+              400: '#a78bfa',
+              500: '#8b5cf6',
+              600: '#7c3aed',
+              700: '#6d28d9',
+              800: '#5b21b6',
+              900: '#4c1d95',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans transition-colors duration-200">
+
+  <!-- Navbar -->
+  <header class="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-brand-500/25">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          </svg>
+        </div>
+        <div>
+          <span class="font-display font-bold text-xl tracking-tight bg-gradient-to-r from-white via-slate-200 to-brand-300 bg-clip-text text-transparent">Temple Mail</span>
+          <span class="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20 ml-2">PRO</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 sm:gap-3">
+        <button id="btn-api-docs" class="text-xs sm:text-sm font-medium px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60 transition flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+          </svg>
+          <span class="hidden sm:inline">REST API ডক্স</span>
+          <span class="sm:hidden">API</span>
+        </button>
+
+        <button id="btn-simulate" class="text-xs sm:text-sm font-medium px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 transition flex items-center gap-1.5" title="টেস্ট ইমেইল পাঠিয়ে যাচাই করুন">
+          <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+          </svg>
+          <span class="hidden sm:inline">টেস্ট ইমেইল সিমুলেট</span>
+          <span class="sm:hidden">টেস্ট</span>
+        </button>
+
+        <button id="btn-toggle-sound" class="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition" title="সাউন্ড নোটিফিকেশন">
+          <svg id="icon-sound-on" class="w-4 h-4 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 py-8 space-y-6">
+
+    <!-- Hero Card: Temp Mail Address & Control Box -->
+    <div class="relative rounded-3xl bg-gradient-to-b from-slate-900 to-slate-900/90 border border-slate-800 shadow-2xl p-6 sm:p-8 backdrop-blur overflow-hidden">
+      <!-- Glow background circles -->
+      <div class="absolute -top-24 -right-24 w-72 h-72 bg-brand-600/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-24 -left-24 w-72 h-72 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="relative z-10 flex flex-col items-center text-center">
+        <span class="text-xs font-semibold uppercase tracking-widest text-brand-400 mb-2">আপনার অস্থায়ী ডিসপোজেবল ইমেইল অ্যাড্রেস</span>
+        <h1 class="text-xl sm:text-2xl font-display font-semibold text-slate-200 mb-6">কোনো রেজিস্ট্রেশন ছাড়াই ইনবক্স ব্যবহার করুন</h1>
+
+        <!-- Address Display Box -->
+        <div class="w-full max-w-2xl bg-slate-950/80 border border-slate-700/80 rounded-2xl p-2 sm:p-3 flex flex-col sm:flex-row items-center gap-3 shadow-inner">
+          <div class="flex-1 px-4 py-2 w-full text-center sm:text-left overflow-hidden">
+            <span id="current-email" class="text-lg sm:text-xl font-mono font-medium text-white truncate block select-all">
+              লোড হচ্ছে...
+            </span>
+          </div>
+
+          <div class="flex items-center gap-2 w-full sm:w-auto justify-center">
+            <!-- Copy Button -->
+            <button id="btn-copy-email" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-medium text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-brand-600/30">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+              </svg>
+              <span>কপি করুন</span>
+            </button>
+
+            <!-- QR Code Button -->
+            <button id="btn-qr-toggle" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition" title="QR কোড দেখুন">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Action Buttons Row -->
+        <div class="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 mt-5 text-sm">
+          <!-- Refresh -->
+          <button id="btn-refresh" class="px-3.5 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700/60 transition flex items-center gap-2">
+            <svg id="icon-refresh" class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            <span>রিফ্রেশ</span>
+          </button>
+
+          <!-- Change / Random -->
+          <button id="btn-random-email" class="px-3.5 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700/60 transition flex items-center gap-2">
+            <svg class="w-4 h-4 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            <span>নতুন র‍্যান্ডম মেইল</span>
+          </button>
+
+          <!-- Custom Email -->
+          <button id="btn-open-custom-modal" class="px-3.5 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700/60 transition flex items-center gap-2">
+            <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
+            <span>কাস্টম মেইল তৈরি</span>
+          </button>
+
+          <!-- Delete Mailbox -->
+          <button id="btn-delete-mailbox" class="px-3.5 py-2 rounded-xl bg-red-950/40 hover:bg-red-900/50 text-red-300 border border-red-800/40 transition flex items-center gap-2">
+            <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+            <span>ইনবক্স মুছুন</span>
+          </button>
+        </div>
+
+        <!-- Auto refresh countdown bar -->
+        <div class="w-full max-w-md mt-6">
+          <div class="flex justify-between items-center text-xs text-slate-400 mb-1.5 font-medium">
+            <span class="flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              অটো-রিফ্রেশ সক্রিয়
+            </span>
+            <span id="countdown-text">৮ সেকেন্ড</span>
+          </div>
+          <div class="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
+            <div id="countdown-progress" class="h-full bg-gradient-to-r from-brand-500 to-indigo-500 transition-all duration-1000 ease-linear" style="width: 100%;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- QR Code Popup / Card -->
+    <div id="qr-container" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center shadow-xl max-w-xs mx-auto animate-fadeIn">
+      <h3 class="text-sm font-semibold text-slate-200 mb-4">মোবাইলে স্ক্যান করে মেইল কপি করুন</h3>
+      <div id="qrcode-box" class="p-3 bg-white rounded-xl inline-block shadow-inner"></div>
+      <button id="btn-close-qr" class="block w-full mt-4 text-xs font-medium text-slate-400 hover:text-white py-1.5">বন্ধ করুন</button>
+    </div>
+
+    <!-- Inbox List Section -->
+    <div class="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-6 shadow-xl">
+      <div class="flex items-center justify-between border-b border-slate-800/80 pb-4 mb-4">
+        <div class="flex items-center gap-2">
+          <h2 class="text-lg font-display font-semibold text-slate-200">ইনবক্স</h2>
+          <span id="inbox-badge" class="px-2 py-0.5 rounded-full text-xs font-bold bg-brand-500/20 text-brand-300 border border-brand-500/30">০টি মেইল</span>
+        </div>
+        <div class="text-xs text-slate-400 flex items-center gap-2">
+          <span id="inbox-status-indicator" class="flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-slate-500"></span> চেক করা হচ্ছে...
+          </span>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div id="inbox-empty" class="py-16 text-center">
+        <div class="w-16 h-16 rounded-2xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-center mx-auto mb-4 text-slate-400 shadow-inner">
+          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+          </svg>
+        </div>
+        <h3 class="text-base font-semibold text-slate-200 mb-1">ইনবক্স বর্তমানে খালি রয়েছে</h3>
+        <p class="text-sm text-slate-400 max-w-sm mx-auto mb-5">
+          আপনার এই টেম্প মেইলে কোনো ইমেইল পাঠানো হলে তা স্বয়ংক্রিয়ভাবে এখানে প্রদর্শিত হবে।
+        </p>
+        <button id="btn-quick-test" class="inline-flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-xl bg-brand-600/30 hover:bg-brand-600/40 text-brand-300 border border-brand-500/30 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+          একটি টেস্ট ভেরিফিকেশন ইমেইল পাঠান
+        </button>
+      </div>
+
+      <!-- Email List Container -->
+      <div id="email-list" class="space-y-2.5 hidden">
+        <!-- Dynamic email items inserted here -->
+      </div>
+    </div>
+
+    <!-- Cloudflare & Domain Info Banner -->
+    <div class="rounded-2xl bg-slate-900/60 border border-slate-800/80 p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div class="flex items-start gap-3">
+        <div class="p-2.5 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 shrink-0">
+          <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z"/>
+          </svg>
+        </div>
+        <div>
+          <h4 class="text-sm font-semibold text-slate-200">ক্লাউডফ্লেয়ার ও ডিজিটালপ্ল্যাট ডোমেইন ইন্টিগ্রেশন</h4>
+          <p class="text-xs text-slate-400 mt-0.5 leading-relaxed">
+            আপনার ডোমেইনে পাঠানো যেকোনো ইমেইল Cloudflare Email Routing Catch-all এর মাধ্যমে সরাসরি আপনার এই সিস্টেমে চলে আসবে।
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <span class="text-xs font-mono px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 border border-slate-700/60" id="current-domain-badge">
+          Domain: ...
+        </span>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Email Detail Modal -->
+  <div id="email-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-modalIn">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between gap-4 bg-slate-900/90">
+        <div class="flex items-center gap-3 overflow-hidden">
+          <div class="w-10 h-10 rounded-full bg-brand-600/20 text-brand-400 border border-brand-500/30 flex items-center justify-center font-bold text-sm shrink-0" id="modal-sender-avatar">
+            M
+          </div>
+          <div class="overflow-hidden">
+            <h3 id="modal-subject" class="font-display font-semibold text-slate-100 text-base sm:text-lg truncate">ইমেইল শিরোনাম</h3>
+            <div class="text-xs text-slate-400 flex items-center gap-2 truncate">
+              <span>প্রেরক: <strong id="modal-from" class="text-slate-300 font-normal">sender@example.com</strong></span>
+              <span>•</span>
+              <span id="modal-date" class="text-slate-400">তারিখ</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 shrink-0">
+          <button id="btn-delete-email-modal" class="p-2 rounded-xl bg-red-950/40 hover:bg-red-900/50 text-red-300 border border-red-800/40 transition" title="এই ইমেইলটি মুছুন">
+            <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+          </button>
+          <button id="btn-close-email-modal" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Format View Switcher -->
+      <div class="px-6 py-2 bg-slate-950/60 border-b border-slate-800/60 flex items-center justify-between text-xs">
+        <div class="flex items-center gap-1">
+          <button id="tab-html" class="px-3 py-1 rounded-lg bg-brand-600 text-white font-medium">HTML ভিউ</button>
+          <button id="tab-text" class="px-3 py-1 rounded-lg bg-slate-800 text-slate-400 hover:text-slate-200">প্লেইন টেক্সট</button>
+          <button id="tab-headers" class="px-3 py-1 rounded-lg bg-slate-800 text-slate-400 hover:text-slate-200">হেডার্স</button>
+        </div>
+        <div id="modal-recipient-tag" class="text-slate-500 font-mono text-[11px] truncate">
+          to: ...
+        </div>
+      </div>
+
+      <!-- Modal Body (Iframe for sanitized HTML or Pre for text) -->
+      <div class="flex-1 overflow-auto bg-slate-950 p-4 sm:p-6 min-h-[350px]">
+        <iframe id="email-iframe" class="w-full h-full min-h-[350px] bg-white rounded-xl border border-slate-800" sandbox="allow-same-origin"></iframe>
+        <pre id="email-text-view" class="hidden text-sm font-mono text-slate-300 whitespace-pre-wrap leading-relaxed p-4 bg-slate-900 rounded-xl border border-slate-800"></pre>
+        <pre id="email-headers-view" class="hidden text-xs font-mono text-slate-400 whitespace-pre-wrap leading-relaxed p-4 bg-slate-900 rounded-xl border border-slate-800"></pre>
+      </div>
+
+      <!-- Attachments Footer (if any) -->
+      <div id="modal-attachments" class="hidden px-6 py-3 border-t border-slate-800 bg-slate-900/80">
+        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">সংযুক্ত ফাইলসমূহ:</span>
+        <div id="attachments-container" class="flex flex-wrap gap-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Email Modal -->
+  <div id="custom-email-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-6 shadow-2xl animate-modalIn">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-display font-semibold text-lg text-slate-100">কাস্টম ইমেইল অ্যাড্রেস</h3>
+        <button id="btn-close-custom-modal" class="text-slate-400 hover:text-white">✕</button>
+      </div>
+      <p class="text-xs text-slate-400 mb-4">
+        আপনার পছন্দ অনুযায়ী যেকোনো ইউজারনেম দিয়ে ইনস্ট্যান্ট টেম্প মেইল তৈরি করুন।
+      </p>
+
+      <form id="form-custom-email" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5">ইউজারনেম (Username)</label>
+          <div class="flex items-center rounded-xl bg-slate-950 border border-slate-700/80 overflow-hidden focus-within:border-brand-500">
+            <input type="text" id="input-custom-username" placeholder="myusername" required minlength="3" maxlength="32" class="w-full px-3.5 py-2.5 bg-transparent text-white font-mono text-sm focus:outline-none">
+            <span class="px-3 text-slate-500 font-mono text-sm">@</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5">ডোমেইন নির্বাচন করুন</label>
+          <select id="select-custom-domain" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700/80 text-white font-mono text-sm focus:outline-none focus:border-brand-500">
+            <!-- Dynamic domains loaded from /api/config -->
+          </select>
+        </div>
+
+        <button type="submit" class="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-medium text-sm transition shadow-lg shadow-brand-600/30">
+          ইনবক্স তৈরি করুন
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- API Docs Modal -->
+  <div id="api-docs-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl animate-modalIn overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
+        <div>
+          <h3 class="font-display font-semibold text-lg text-slate-100">Temple Mail REST API ডকুমেন্টেশন</h3>
+          <p class="text-xs text-slate-400">বট বা সফটওয়্যার অ্যাপ্লিকেশনে সহজে ব্যবহার করার জন্য ওপেন এপিআই।</p>
+        </div>
+        <button id="btn-close-api-docs" class="text-slate-400 hover:text-white text-lg">✕</button>
+      </div>
+
+      <div class="flex-1 overflow-auto p-6 space-y-6 text-sm">
+        <!-- 1. Generate -->
+        <div class="space-y-2">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono text-xs font-bold">POST</span>
+            <code class="text-slate-200 font-mono">/api/mailbox/generate</code>
+            <span class="text-xs text-slate-400 ml-auto">র‍্যান্ডম মেইল তৈরি</span>
+          </div>
+          <pre class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs font-mono text-slate-300 overflow-x-auto">curl -X POST http://yourdomain.com/api/mailbox/generate</pre>
+        </div>
+
+        <!-- 2. Get Mailbox -->
+        <div class="space-y-2">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded bg-sky-500/20 text-sky-400 font-mono text-xs font-bold">GET</span>
+            <code class="text-slate-200 font-mono">/api/mailbox/:address</code>
+            <span class="text-xs text-slate-400 ml-auto">ইনবক্স চেক ও মেইল লিস্ট</span>
+          </div>
+          <pre class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs font-mono text-slate-300 overflow-x-auto">curl http://yourdomain.com/api/mailbox/user@yourdomain.com</pre>
+        </div>
+
+        <!-- 3. Get Email Message -->
+        <div class="space-y-2">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded bg-sky-500/20 text-sky-400 font-mono text-xs font-bold">GET</span>
+            <code class="text-slate-200 font-mono">/api/email/:id</code>
+            <span class="text-xs text-slate-400 ml-auto">নির্দিষ্ট ইমেইল পড়া</span>
+          </div>
+          <pre class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs font-mono text-slate-300 overflow-x-auto">curl http://yourdomain.com/api/email/{email_id}</pre>
+        </div>
+
+        <!-- 4. Webhook -->
+        <div class="space-y-2">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded bg-purple-500/20 text-purple-400 font-mono text-xs font-bold">POST</span>
+            <code class="text-slate-200 font-mono">/api/webhook/email</code>
+            <span class="text-xs text-slate-400 ml-auto">ক্লাউডফ্লেয়ার ইনবাউন্ড ওয়েবহুক</span>
+          </div>
+          <pre class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs font-mono text-slate-300 overflow-x-auto">curl -X POST http://yourdomain.com/api/webhook/email \
+  -H "Authorization: Bearer YOUR_WEBHOOK_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"to":"test@yourdomain.com","from":{"name":"Sender","address":"s@site.com"},"subject":"OTP","text":"1234"}'</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 bg-slate-900 border border-brand-500/50 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 transform translate-y-20 opacity-0 transition-all duration-300">
+    <div class="w-6 h-6 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center shrink-0">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+      </svg>
+    </div>
+    <span id="toast-message" class="text-sm font-medium">অ্যাড্রেস কপি করা হয়েছে!</span>
+  </div>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800/80 py-6 text-center text-xs text-slate-500">
+    <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <span>&copy; <span id="year">2026</span> Temple Mail. ওপেন সোর্স ডিসপোজেবল টেম্প মেইল ও এপিআই সার্ভিস।</span>
+      <span class="flex items-center gap-3">
+        <span>Powered by Cloudflare Email Routing</span>
+        <span>•</span>
+        <span class="text-emerald-400 flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> সিস্টেম অনলাইনে রয়েছে
+        </span>
+      </span>
+    </div>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

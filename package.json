@@ -1,0 +1,28 @@
+{
+  "name": "temple-temp-mail",
+  "version": "1.0.0",
+  "description": "Full-Featured Temp Mail Service with Cloudflare Integration, REST API and Modern UI",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "tunnel": "npx localtunnel --port 3000",
+    "test:simulate": "node scripts/simulate-email.js"
+  },
+  "keywords": [
+    "temp-mail",
+    "disposable-email",
+    "cloudflare-email-routing",
+    "email-api",
+    "mail-server"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mailparser": "^3.7.2"
+  }
+}
