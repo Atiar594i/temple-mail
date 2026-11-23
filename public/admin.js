@@ -370,6 +370,8 @@
         const data = JSON.parse(event.data);
         if (data.type === 'admin_email' && data.email) {
           handleIncomingEmail(data.email);
+        } else if (data.type === 'admin_mailbox' && data.mailbox) {
+          handleIncomingMailbox(data.mailbox);
         }
       } catch (e) {
         console.error('SSE parse error:', e);
@@ -451,6 +453,29 @@
       }
 
       tableEmailsBody.insertAdjacentHTML('afterbegin', newRowHtml);
+    }
+  }
+
+  // Handle Live Mailbox Creation Push (from API or Web)
+  function handleIncomingMailbox(mb) {
+    const existing = cachedMailboxes.find(m => m.address.toLowerCase() === mb.address.toLowerCase());
+    if (!existing) {
+      cachedMailboxes.unshift({
+        address: mb.address,
+        created_at: mb.created_at ? mb.created_at * 1000 : Date.now(),
+        last_accessed: mb.last_accessed ? mb.last_accessed * 1000 : Date.now(),
+        email_count: 0,
+      });
+
+      // Increment stats
+      const currentMailboxes = parseInt(statMailboxes.textContent.replace(/,/g, '') || '0', 10);
+      statMailboxes.textContent = (currentMailboxes + 1).toLocaleString();
+      badgeMailboxCount.textContent = `${cachedMailboxes.length}টি`;
+
+      // If viewing mailboxes tab, re-render
+      if (currentTab === 'all-mailboxes') {
+        renderMailboxes(cachedMailboxes);
+      }
     }
   }
 

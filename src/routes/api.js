@@ -91,6 +91,19 @@ export function broadcastEmailToMailbox(mailboxAddress, emailData) {
   }
 }
 
+export function broadcastMailboxToAdmin(mailbox) {
+  if (adminSseSubscribers.size > 0) {
+    const adminPayload = `data: ${JSON.stringify({ type: 'admin_mailbox', mailbox })}\n\n`;
+    for (const adminClient of adminSseSubscribers) {
+      try {
+        adminClient.write(adminPayload);
+      } catch {
+        adminSseSubscribers.delete(adminClient);
+      }
+    }
+  }
+}
+
 // 0. Live SSE Stream endpoint
 apiRouter.get('/events/:address', (req, res) => {
   const address = req.params.address.toLowerCase().trim();
@@ -145,6 +158,7 @@ apiRouter.post('/mailbox/generate', (req, res) => {
     const requestedDomain = req.body?.domain || req.query?.domain;
     const address = generateRandomAddress(requestedDomain);
     const mailbox = db.createMailbox(address);
+    broadcastMailboxToAdmin(mailbox);
 
     const ttlSeconds = config.emailTtlMinutes * 60;
     res.json({
@@ -182,6 +196,7 @@ apiRouter.post('/mailbox/custom', (req, res) => {
 
     const fullAddress = `${cleanUsername}@${chosenDomain}`;
     const mailbox = db.createMailbox(fullAddress);
+    broadcastMailboxToAdmin(mailbox);
 
     const ttlSeconds = config.emailTtlMinutes * 60;
     res.json({
@@ -205,6 +220,7 @@ apiRouter.get('/mailbox/:address', (req, res) => {
     if (!mailbox) {
       // Auto-create on first query so users can check any address instantly
       const created = db.createMailbox(address);
+      broadcastMailboxToAdmin(created);
       return res.json({
         success: true,
         address: created.address,
