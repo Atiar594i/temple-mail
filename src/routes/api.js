@@ -49,9 +49,10 @@ function getNextRotatingDomain() {
 }
 
 function generateRandomAddress(domain) {
-  let chosenDomain = domain && config.domains.includes(domain.toLowerCase())
+  // Use requested domain if valid, otherwise use the Cloudflare-verified primary domain (atiar.dpdns.org)
+  const chosenDomain = domain && config.domains.includes(domain.toLowerCase())
     ? domain.toLowerCase()
-    : getNextRotatingDomain(); // Automatically cycles to next domain on each click!
+    : config.defaultDomain;
 
   const prefix = PREFIX_NAMES[Math.floor(Math.random() * PREFIX_NAMES.length)];
   const randomNum = Math.floor(1000 + Math.random() * 9000); // 4 clean digits (e.g. alex4821)

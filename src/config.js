@@ -14,8 +14,8 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-// Comma-separated list of domains supported by this instance (tempmail.us.mw is default)
-const rawDomains = process.env.DOMAINS || process.env.DOMAIN || 'tempmail.us.mw,mailt.fs.kg,mamamail.bg5.net,maile.nastu.net,atiar.dpdns.org';
+// Comma-separated list of domains supported by this instance (atiar.dpdns.org is Cloudflare-verified)
+const rawDomains = process.env.DOMAINS || process.env.DOMAIN || 'atiar.dpdns.org,tempmail.us.mw,mailt.fs.kg,mamamail.bg5.net,maile.nastu.net';
 const domains = rawDomains
   .split(',')
   .map(d => d.trim().toLowerCase())
@@ -23,8 +23,8 @@ const domains = rawDomains
 
 export const config = {
   port: parseInt(process.env.PORT || '3000', 10),
-  domains: domains.length > 0 ? domains : ['tempmail.us.mw'],
-  defaultDomain: domains[0] || 'tempmail.us.mw',
+  domains: domains.length > 0 ? domains : ['atiar.dpdns.org'],
+  defaultDomain: domains[0] || 'atiar.dpdns.org',
   webhookSecret: process.env.WEBHOOK_SECRET || 'temple-secret-key-change-me',
   emailTtlMinutes: parseInt(process.env.EMAIL_TTL_MINUTES || '60', 10), // default 1 hour
   dataDir,
