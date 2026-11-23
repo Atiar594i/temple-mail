@@ -6,20 +6,23 @@ import { db } from '../db.js';
 
 export const apiRouter = Router();
 
-// Adjective + Noun words for friendly random email addresses
-const ADJECTIVES = ['quick', 'brave', 'silent', 'bright', 'cyber', 'swift', 'smart', 'vivid', 'lucky', 'cosmic', 'zen', 'hyper', 'mystic', 'neon', 'shadow'];
-const NOUNS = ['fox', 'eagle', 'tiger', 'wolf', 'hawk', 'storm', 'wave', 'byte', 'spark', 'coder', 'star', 'pilot', 'falcon', 'nebula', 'shield'];
+// Clean, friendly names for natural-looking temporary email addresses (without awkward dots)
+const PREFIX_NAMES = [
+  'alex', 'sam', 'jordan', 'taylor', 'morgan', 'chris', 'casey', 'riley',
+  'nova', 'echo', 'zen', 'pixel', 'spark', 'shadow', 'cyber', 'swift',
+  'falcon', 'tiger', 'storm', 'star', 'nexus', 'pulse', 'vivid', 'lunar',
+  'blaze', 'clover', 'frost', 'hawk', 'meteor', 'orion', 'phoenix', 'titan'
+];
 
 function generateRandomAddress(domain) {
   const chosenDomain = domain && config.domains.includes(domain.toLowerCase())
     ? domain.toLowerCase()
     : config.defaultDomain;
 
-  const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
-  const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)];
-  const randomSuffix = crypto.randomBytes(3).toString('hex'); // 6 hex chars
+  const prefix = PREFIX_NAMES[Math.floor(Math.random() * PREFIX_NAMES.length)];
+  const randomNum = Math.floor(1000 + Math.random() * 9000); // 4 clean digits (e.g. alex4821)
 
-  return `${adj}.${noun}.${randomSuffix}@${chosenDomain}`;
+  return `${prefix}${randomNum}@${chosenDomain}`;
 }
 
 // 1. Get service config & supported domains

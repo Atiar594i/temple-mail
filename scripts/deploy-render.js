@@ -33,8 +33,10 @@ async function createRenderService() {
       env: 'node',
       plan: 'free',
       region: 'singapore',
-      buildCommand: 'npm install',
-      startCommand: 'npm start',
+      envSpecificDetails: {
+        buildCommand: 'npm install',
+        startCommand: 'npm start'
+      },
       envVars: [
         { key: 'DOMAINS', value: 'atiar.dpdns.org' },
         { key: 'WEBHOOK_SECRET', value: 'temple-secret-key-12345' },
