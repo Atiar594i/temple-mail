@@ -7,10 +7,11 @@ let currentAddress = localStorage.getItem(STORAGE_KEY) || null;
 let soundEnabled = localStorage.getItem(SOUND_KEY) !== 'false';
 let knownEmailIds = new Set();
 let countdownTimer = null;
-let countdownRemaining = 8;
-const REFRESH_INTERVAL = 8; // seconds
+const REFRESH_INTERVAL = 3; // Ultra-fast 3-second live refresh
+let countdownRemaining = REFRESH_INTERVAL;
 let serverConfig = null;
 let currentOpenedEmail = null;
+const ORIGINAL_TITLE = document.title;
 
 // DOM Elements
 const currentEmailEl = document.getElementById('current-email');
@@ -146,22 +147,29 @@ async function fetchInbox(isManual = false) {
     iconRefresh.classList.add('spinning');
   }
 
-  inboxStatusIndicator.innerHTML = '<span class="w-2 h-2 rounded-full bg-brand-400 animate-ping"></span> আপডেট হচ্ছে...';
-
   try {
-    const res = await fetch(`/api/mailbox/${encodeURIComponent(currentAddress)}`);
+    // Add cache buster timestamp query to ensure fresh data on every poll
+    const res = await fetch(`/api/mailbox/${encodeURIComponent(currentAddress)}?_t=${Date.now()}`, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      }
+    });
     const data = await res.json();
 
     if (data.success) {
       const emails = data.emails || [];
       inboxBadgeEl.textContent = `${emails.length}টি মেইল`;
 
-      // Check for new emails to trigger chime
+      // Check for new emails to trigger chime & title update
       let hasNew = false;
+      let latestOtp = null;
+
       emails.forEach(em => {
         if (!knownEmailIds.has(em.id)) {
           if (knownEmailIds.size > 0) {
             hasNew = true;
+            if (em.otp) latestOtp = em.otp;
           }
           knownEmailIds.add(em.id);
         }
@@ -169,18 +177,24 @@ async function fetchInbox(isManual = false) {
 
       if (hasNew) {
         playChimeSound();
-        showToast('নতুন ইমেইল এসেছে!');
+        if (latestOtp) {
+          showToast(`নতুন ওটিপি কোড: ${latestOtp}`);
+          document.title = `🔥 (${latestOtp}) ওটিপি এসেছে! - Temple Mail`;
+        } else {
+          showToast('নতুন ইমেইল এসেছে!');
+          document.title = `📩 (${emails.length}) নতুন মেইল - Temple Mail`;
+        }
       }
 
       renderEmailList(emails);
-      inboxStatusIndicator.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400"></span> লাইভ';
+      inboxStatusIndicator.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400"></span> লাইভ (৩ সে.)';
     }
   } catch (err) {
     console.error('Inbox fetch error:', err);
-    inboxStatusIndicator.innerHTML = '<span class="w-2 h-2 rounded-full bg-red-400"></span> ত্রুটি';
+    inboxStatusIndicator.innerHTML = '<span class="w-2 h-2 rounded-full bg-red-400"></span> কানেক্টিং...';
   } finally {
     if (iconRefresh) {
-      setTimeout(() => iconRefresh.classList.remove('spinning'), 500);
+      setTimeout(() => iconRefresh.classList.remove('spinning'), 400);
     }
   }
 }
@@ -205,30 +219,50 @@ function renderEmailList(emails) {
       ? '<span class="w-2.5 h-2.5 rounded-full bg-brand-500 shrink-0 shadow-lg shadow-brand-500/50"></span>'
       : '';
 
+    // Prominent OTP highlight badge if code detected
+    const otpBanner = email.otp ? `
+      <div class="mt-2.5 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2 overflow-hidden">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-md border border-emerald-500/30">OTP</span>
+          <span class="font-mono font-extrabold text-base sm:text-lg text-emerald-300 tracking-wider">${escapeHtml(email.otp)}</span>
+        </div>
+        <button data-otp="${escapeHtml(email.otp)}" class="btn-copy-otp px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition flex items-center gap-1 shadow-md shadow-emerald-600/30 shrink-0">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+          </svg>
+          <span>কপি</span>
+        </button>
+      </div>
+    ` : '';
+
     return `
-      <div data-email-id="${email.id}" class="email-card cursor-pointer p-4 rounded-2xl bg-slate-950/70 hover:bg-slate-800/60 border ${!email.is_read ? 'border-brand-500/40' : 'border-slate-800/80'} flex items-center justify-between gap-3 group transition">
-        <div class="flex items-center gap-3 overflow-hidden flex-1">
-          <div class="w-10 h-10 rounded-xl bg-slate-800 group-hover:bg-brand-600/20 text-slate-300 group-hover:text-brand-300 border border-slate-700/60 flex items-center justify-center font-bold text-sm shrink-0 transition">
-            ${initial}
-          </div>
-          <div class="overflow-hidden flex-1">
-            <div class="flex items-center gap-2 mb-0.5">
-              <span class="text-sm font-semibold text-slate-200 truncate">${escapeHtml(email.from_name || email.from_address)}</span>
-              ${unreadDot}
-              <span class="text-[11px] text-slate-500 ml-auto shrink-0">${timeAgo}</span>
+      <div data-email-id="${email.id}" class="email-card cursor-pointer p-4 rounded-2xl bg-slate-950/70 hover:bg-slate-800/60 border ${!email.is_read ? 'border-brand-500/40 bg-slate-900/60' : 'border-slate-800/80'} group transition">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center gap-3 overflow-hidden flex-1">
+            <div class="w-10 h-10 rounded-xl bg-slate-800 group-hover:bg-brand-600/20 text-slate-300 group-hover:text-brand-300 border border-slate-700/60 flex items-center justify-center font-bold text-sm shrink-0 transition">
+              ${initial}
             </div>
-            <div class="text-xs font-medium text-slate-300 truncate">${escapeHtml(email.subject || '(No Subject)')}</div>
-            <div class="text-[11px] text-slate-500 truncate mt-0.5">${escapeHtml(email.preview || '')}</div>
+            <div class="overflow-hidden flex-1">
+              <div class="flex items-center gap-2 mb-0.5">
+                <span class="text-sm font-semibold text-slate-200 truncate">${escapeHtml(email.from_name || email.from_address)}</span>
+                ${unreadDot}
+                <span class="text-[11px] text-slate-500 ml-auto shrink-0">${timeAgo}</span>
+              </div>
+              <div class="text-xs font-medium text-slate-300 truncate">${escapeHtml(email.subject || '(No Subject)')}</div>
+              <div class="text-[11px] text-slate-500 truncate mt-0.5">${escapeHtml(email.preview || '')}</div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button data-delete-id="${email.id}" class="btn-item-delete p-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-950/30 transition" title="মুছুন">
+              <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+            </button>
           </div>
         </div>
 
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button data-delete-id="${email.id}" class="btn-item-delete p-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-950/30 transition" title="মুছুন">
-            <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-            </svg>
-          </button>
-        </div>
+        ${otpBanner}
       </div>
     `;
   }).join('');
@@ -236,9 +270,24 @@ function renderEmailList(emails) {
   // Attach card click handlers
   emailListEl.querySelectorAll('.email-card').forEach(card => {
     card.addEventListener('click', (e) => {
-      if (e.target.closest('.btn-item-delete')) return;
+      if (e.target.closest('.btn-item-delete') || e.target.closest('.btn-copy-otp')) return;
       const id = card.dataset.emailId;
       openEmailModal(id);
+    });
+  });
+
+  // Attach OTP copy handlers
+  emailListEl.querySelectorAll('.btn-copy-otp').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const otp = btn.dataset.otp;
+      if (otp) {
+        navigator.clipboard.writeText(otp).then(() => {
+          showToast(`ওটিপি কোড "${otp}" কপি করা হয়েছে!`);
+        }).catch(() => {
+          showToast('কপি করতে ব্যর্থ', true);
+        });
+      }
     });
   });
 
@@ -273,6 +322,15 @@ async function openEmailModal(emailId) {
     document.getElementById('modal-date').textContent = new Date(em.received_at * 1000).toLocaleString('bn-BD');
     document.getElementById('modal-sender-avatar').textContent = (em.from_name || em.from_address || 'M').charAt(0).toUpperCase();
     document.getElementById('modal-recipient-tag').textContent = `To: ${em.mailbox_address}`;
+
+    // If OTP exists, show quick copy banner in modal tag
+    if (em.otp) {
+      document.getElementById('modal-recipient-tag').innerHTML = `
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/20 text-emerald-300 font-mono font-bold text-xs border border-emerald-500/40">
+          🔑 ওটিপি: ${em.otp}
+        </span>
+      `;
+    }
 
     // Render HTML in sandboxed iframe
     const iframe = document.getElementById('email-iframe');

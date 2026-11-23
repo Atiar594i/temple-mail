@@ -6,6 +6,30 @@ import { db } from '../db.js';
 
 export const apiRouter = Router();
 
+// Disable all browser and proxy caching on API responses
+apiRouter.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
+
+// Helper: Extract OTP verification code from text/subject
+function extractOtp(subject = '', text = '') {
+  const combined = `${subject} ${text}`;
+  // 1. Look for patterns like "code is 123456", "OTP: 123456", "verification: 123456"
+  const contextMatch = combined.match(/(?:code|otp|verification|pin|ভেরিফিকেশন|কোড)[^0-9]{0,15}(\b\d{4,8}\b)/i);
+  if (contextMatch) return contextMatch[1];
+  
+  // 2. Look for standard 6-digit standalone codes
+  const sixDigitMatch = combined.match(/\b\d{6}\b/);
+  if (sixDigitMatch) return sixDigitMatch[0];
+
+  // 3. Fallback to any 4 to 8 digit number
+  const anyDigitMatch = combined.match(/\b\d{4,8}\b/);
+  return anyDigitMatch ? anyDigitMatch[0] : null;
+}
+
 // Clean, friendly names for natural-looking temporary email addresses (without awkward dots)
 const PREFIX_NAMES = [
   'alex', 'sam', 'jordan', 'taylor', 'morgan', 'chris', 'casey', 'riley',
@@ -111,7 +135,12 @@ apiRouter.get('/mailbox/:address', (req, res) => {
       });
     }
 
-    const emails = db.getEmailsForMailbox(address);
+    const rawEmails = db.getEmailsForMailbox(address);
+    const emails = rawEmails.map(em => ({
+      ...em,
+      otp: extractOtp(em.subject, em.preview),
+    }));
+
     res.json({
       success: true,
       address: mailbox.address,
@@ -143,7 +172,8 @@ apiRouter.get('/email/:id', (req, res) => {
     if (!email) {
       return res.status(404).json({ success: false, error: 'Email not found' });
     }
-    res.json({ success: true, email });
+    const otp = extractOtp(email.subject, email.text_body);
+    res.json({ success: true, email: { ...email, otp } });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
