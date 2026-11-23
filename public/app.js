@@ -175,21 +175,20 @@ function setActiveAddress(address) {
   fetchInbox(true);
 }
 
-// Generate New Random Address
+// Generate New Random Address (rotates through all domains automatically)
 async function generateNewEmail(domain) {
   try {
     currentEmailEl.innerHTML = '<span class="inline-flex items-center gap-1.5 text-slate-400"><svg class="w-4 h-4 animate-spin text-brand-400" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> নতুন মেইল তৈরি হচ্ছে...</span>';
 
-    const chosenDomain = domain || serverConfig?.defaultDomain || 'tempmail.us.mw';
     const res = await fetch('/api/mailbox/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ domain: chosenDomain }),
+      body: JSON.stringify({ domain: domain || undefined }),
     });
     const data = await res.json();
     if (data.success) {
       setActiveAddress(data.address);
-      showToast('নতুন ইমেইল অ্যাক্টিভ হয়েছে!');
+      showToast(`নতুন ইমেইল অ্যাক্টিভ হয়েছে! (@${data.address.split('@')[1]})`);
     } else {
       showToast(data.error || 'ইমেইল তৈরি ব্যর্থ হয়েছে', true);
     }

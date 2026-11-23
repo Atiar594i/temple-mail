@@ -38,10 +38,20 @@ const PREFIX_NAMES = [
   'blaze', 'clover', 'frost', 'hawk', 'meteor', 'orion', 'phoenix', 'titan'
 ];
 
+// Round-robin index counter to rotate through all available domains on each new mail generation
+let domainRotationCounter = 0;
+
+function getNextRotatingDomain() {
+  const list = config.domains && config.domains.length > 0 ? config.domains : [config.defaultDomain];
+  const domain = list[domainRotationCounter % list.length];
+  domainRotationCounter = (domainRotationCounter + 1) % list.length;
+  return domain;
+}
+
 function generateRandomAddress(domain) {
-  const chosenDomain = domain && config.domains.includes(domain.toLowerCase())
+  let chosenDomain = domain && config.domains.includes(domain.toLowerCase())
     ? domain.toLowerCase()
-    : config.defaultDomain;
+    : getNextRotatingDomain(); // Automatically cycles to next domain on each click!
 
   const prefix = PREFIX_NAMES[Math.floor(Math.random() * PREFIX_NAMES.length)];
   const randomNum = Math.floor(1000 + Math.random() * 9000); // 4 clean digits (e.g. alex4821)
