@@ -6,11 +6,13 @@ const SOUND_KEY = 'temple_mail_sound_enabled';
 let currentAddress = localStorage.getItem(STORAGE_KEY) || null;
 let soundEnabled = localStorage.getItem(SOUND_KEY) !== 'false';
 let knownEmailIds = new Set();
+let cachedEmails = [];
 let countdownTimer = null;
-const REFRESH_INTERVAL = 3; // Ultra-fast 3-second live refresh
+const REFRESH_INTERVAL = 3; // Fast background fallback
 let countdownRemaining = REFRESH_INTERVAL;
 let serverConfig = null;
 let currentOpenedEmail = null;
+let activeEventSource = null;
 const ORIGINAL_TITLE = document.title;
 
 // DOM Elements
@@ -104,15 +106,70 @@ async function loadConfig() {
   }
 }
 
+// Live EventStream (SSE) for 0ms Instant Email & OTP Push
+function initLiveStream(address) {
+  if (activeEventSource) {
+    activeEventSource.close();
+    activeEventSource = null;
+  }
+
+  if (!window.EventSource || !address) return;
+
+  try {
+    const es = new EventSource(`/api/events/${encodeURIComponent(address)}`);
+    activeEventSource = es;
+
+    es.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'new_email' && data.email) {
+          const newEm = data.email;
+
+          // Avoid duplicate processing
+          if (knownEmailIds.has(newEm.id)) return;
+          knownEmailIds.add(newEm.id);
+
+          // Prepend immediately to inbox list
+          cachedEmails.unshift(newEm);
+          renderEmailList(cachedEmails);
+          inboxBadgeEl.textContent = `${cachedEmails.length}টি মেইল`;
+
+          // Sound and Instant OTP Alert
+          playChimeSound();
+          if (newEm.otp) {
+            showToast(`🔥 ওটিপি কোড: ${newEm.otp}`);
+            document.title = `🔑 (${newEm.otp}) ওটিপি এসেছে! - Temple Mail`;
+          } else {
+            showToast('নতুন ইমেইল এসেছে!');
+            document.title = `📩 নতুন ইমেইল - Temple Mail`;
+          }
+        }
+      } catch (e) {
+        console.error('SSE Message parsing error:', e);
+      }
+    };
+
+    es.onerror = () => {
+      // Background poll continues seamlessly if SSE temporarily reconnects
+    };
+  } catch (err) {
+    console.warn('SSE not supported or connection error:', err);
+  }
+}
+
 // Set Active Email
 function setActiveAddress(address) {
   currentAddress = address.toLowerCase().trim();
   localStorage.setItem(STORAGE_KEY, currentAddress);
   currentEmailEl.textContent = currentAddress;
   knownEmailIds.clear();
+  cachedEmails = [];
 
   // Reset QR code if open
   updateQRCode();
+
+  // Connect 0ms live SSE stream
+  initLiveStream(currentAddress);
 
   // Immediately refresh inbox for new address
   fetchInbox(true);
@@ -121,16 +178,18 @@ function setActiveAddress(address) {
 // Generate New Random Address
 async function generateNewEmail(domain) {
   try {
-    currentEmailEl.textContent = 'নতুন অ্যাড্রেস তৈরি হচ্ছে...';
+    currentEmailEl.innerHTML = '<span class="inline-flex items-center gap-1.5 text-slate-400"><svg class="w-4 h-4 animate-spin text-brand-400" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> নতুন মেইল তৈরি হচ্ছে...</span>';
+
+    const chosenDomain = domain || serverConfig?.defaultDomain || 'tempmail.us.mw';
     const res = await fetch('/api/mailbox/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ domain }),
+      body: JSON.stringify({ domain: chosenDomain }),
     });
     const data = await res.json();
     if (data.success) {
       setActiveAddress(data.address);
-      showToast('নতুন ইমেইল অ্যাড্রেস সক্রিয় হয়েছে!');
+      showToast('নতুন ইমেইল অ্যাক্টিভ হয়েছে!');
     } else {
       showToast(data.error || 'ইমেইল তৈরি ব্যর্থ হয়েছে', true);
     }
@@ -159,6 +218,7 @@ async function fetchInbox(isManual = false) {
 
     if (data.success) {
       const emails = data.emails || [];
+      cachedEmails = emails;
       inboxBadgeEl.textContent = `${emails.length}টি মেইল`;
 
       // Check for new emails to trigger chime & title update

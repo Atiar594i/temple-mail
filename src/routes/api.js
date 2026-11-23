@@ -49,6 +49,60 @@ function generateRandomAddress(domain) {
   return `${prefix}${randomNum}@${chosenDomain}`;
 }
 
+// Server-Sent Events (SSE) subscribers for 0-latency live inbox push
+const sseSubscribers = new Map();
+
+export function broadcastEmailToMailbox(mailboxAddress, emailData) {
+  const normalized = mailboxAddress.toLowerCase().trim();
+  const clients = sseSubscribers.get(normalized);
+  if (clients && clients.size > 0) {
+    const payload = `data: ${JSON.stringify({ type: 'new_email', email: emailData })}\n\n`;
+    for (const client of clients) {
+      try {
+        client.write(payload);
+      } catch (e) {
+        clients.delete(client);
+      }
+    }
+  }
+}
+
+// 0. Live SSE Stream endpoint
+apiRouter.get('/events/:address', (req, res) => {
+  const address = req.params.address.toLowerCase().trim();
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+    'Access-Control-Allow-Origin': '*',
+  });
+
+  res.write(`data: ${JSON.stringify({ type: 'connected', address })}\n\n`);
+
+  if (!sseSubscribers.has(address)) {
+    sseSubscribers.set(address, new Set());
+  }
+  const clients = sseSubscribers.get(address);
+  clients.add(res);
+
+  // Heartbeat ping every 25 seconds to keep connection alive through cloud proxies
+  const pingInterval = setInterval(() => {
+    try {
+      res.write(': ping\n\n');
+    } catch {
+      clearInterval(pingInterval);
+    }
+  }, 25000);
+
+  req.on('close', () => {
+    clearInterval(pingInterval);
+    clients.delete(res);
+    if (clients.size === 0) sseSubscribers.delete(address);
+  });
+});
+
 // 1. Get service config & supported domains
 apiRouter.get('/config', (req, res) => {
   res.json({
@@ -266,6 +320,20 @@ apiRouter.post('/webhook/email', async (req, res) => {
 
     console.log(`[Email Received] To: ${recipientAddress} | From: ${fromAddress} | Subject: "${subject || ''}"`);
 
+    // Broadcast in real-time over SSE (0ms latency!)
+    broadcastEmailToMailbox(recipientAddress, {
+      id: saved.id,
+      mailbox_address: recipientAddress,
+      from_name: fromName,
+      from_address: fromAddress,
+      subject: saved.subject,
+      preview: (text || '').slice(0, 160),
+      received_at: saved.received_at,
+      is_read: false,
+      has_attachments: (attachments && attachments.length > 0),
+      otp: extractOtp(saved.subject, text || html),
+    });
+
     res.json({
       success: true,
       message: 'Email processed and saved successfully',
@@ -306,6 +374,20 @@ apiRouter.post('/test/simulate', async (req, res) => {
       `,
       rawHeaders: { 'x-simulated': 'true' },
       attachments: [],
+    });
+
+    // Broadcast in real-time over SSE
+    broadcastEmailToMailbox(to, {
+      id: saved.id,
+      mailbox_address: to,
+      from_name: saved.from_name,
+      from_address: saved.from_address,
+      subject: saved.subject,
+      preview: (text || 'Your verification code is 849201.').slice(0, 160),
+      received_at: saved.received_at,
+      is_read: false,
+      has_attachments: false,
+      otp: extractOtp(saved.subject, text || html),
     });
 
     res.json({
