@@ -220,5 +220,54 @@ export const db = {
       totalEmails: emailsCount,
       totalUnread: unreadCount,
     };
+  },
+
+  // Admin Methods
+  getAllMailboxes(limit = 100, search = '') {
+    const database = getDatabase();
+    let query = `
+      SELECT m.address, m.created_at, m.last_accessed,
+             COUNT(e.id) as email_count
+      FROM mailboxes m
+      LEFT JOIN emails e ON m.address = e.mailbox_address
+    `;
+    const params = [];
+
+    if (search) {
+      query += ` WHERE m.address LIKE ? `;
+      params.push(`%${search.toLowerCase().trim()}%`);
+    }
+
+    query += ` GROUP BY m.address ORDER BY m.last_accessed DESC LIMIT ? `;
+    params.push(limit);
+
+    return database.prepare(query).all(...params);
+  },
+
+  getRecentEmails(limit = 100, search = '') {
+    const database = getDatabase();
+    let query = `
+      SELECT id, mailbox_address, from_name, from_address,
+             subject, substr(text_body, 1, 200) as preview,
+             received_at, is_read,
+             length(attachments_json) > 2 as has_attachments
+      FROM emails
+    `;
+    const params = [];
+
+    if (search) {
+      query += ` WHERE mailbox_address LIKE ? OR from_address LIKE ? OR subject LIKE ? OR text_body LIKE ? `;
+      const term = `%${search.trim()}%`;
+      params.push(term, term, term, term);
+    }
+
+    query += ` ORDER BY received_at DESC LIMIT ? `;
+    params.push(limit);
+
+    return database.prepare(query).all(...params).map(row => ({
+      ...row,
+      has_attachments: Boolean(row.has_attachments),
+      is_read: Boolean(row.is_read)
+    }));
   }
 };

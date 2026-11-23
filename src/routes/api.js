@@ -62,6 +62,7 @@ function generateRandomAddress(domain) {
 
 // Server-Sent Events (SSE) subscribers for 0-latency live inbox push
 const sseSubscribers = new Map();
+const adminSseSubscribers = new Set();
 
 export function broadcastEmailToMailbox(mailboxAddress, emailData) {
   const normalized = mailboxAddress.toLowerCase().trim();
@@ -73,6 +74,18 @@ export function broadcastEmailToMailbox(mailboxAddress, emailData) {
         client.write(payload);
       } catch (e) {
         clients.delete(client);
+      }
+    }
+  }
+
+  // Also broadcast live to Admin Dashboard in real-time!
+  if (adminSseSubscribers.size > 0) {
+    const adminPayload = `data: ${JSON.stringify({ type: 'admin_email', email: emailData })}\n\n`;
+    for (const adminClient of adminSseSubscribers) {
+      try {
+        adminClient.write(adminPayload);
+      } catch {
+        adminSseSubscribers.delete(adminClient);
       }
     }
   }
@@ -411,12 +424,143 @@ apiRouter.post('/test/simulate', async (req, res) => {
   }
 });
 
-// 10. Service Statistics
-apiRouter.get('/stats', (req, res) => {
-  res.json({
-    success: true,
-    stats: db.getStats(),
-    uptime: Math.floor(process.uptime()),
-    timestamp: Math.floor(Date.now() / 1000),
+// ==========================================
+// ADMIN DASHBOARD API ENDPOINTS
+// ==========================================
+
+function verifyAdminAuth(req, res, next) {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : (req.headers['x-admin-key'] || req.query.admin_key);
+  const validKey = config.adminPassword || config.webhookSecret || 'admin12345';
+
+  if (!token || token !== validKey) {
+    return res.status(401).json({ success: false, error: 'Unauthorized: Invalid Admin Password' });
+  }
+  next();
+}
+
+// 11. Admin Login Verification
+apiRouter.post('/admin/auth', (req, res) => {
+  const { password } = req.body || {};
+  const validKey = config.adminPassword || config.webhookSecret || 'admin12345';
+
+  if (password === validKey) {
+    res.json({ success: true, token: validKey });
+  } else {
+    res.status(401).json({ success: false, error: 'ভুল অ্যাডমিন পাসওয়ার্ড' });
+  }
+});
+
+// 12. Admin Stats
+apiRouter.get('/admin/stats', verifyAdminAuth, (req, res) => {
+  try {
+    const stats = db.getStats();
+    const mailboxes = db.getAllMailboxes(1000);
+    const recentEmails = db.getRecentEmails(200);
+
+    let totalOtps = 0;
+    recentEmails.forEach(em => {
+      if (extractOtp(em.subject, em.preview)) totalOtps++;
+    });
+
+    res.json({
+      success: true,
+      stats: {
+        totalMailboxes: stats.totalMailboxes,
+        totalEmails: stats.totalEmails,
+        totalOtps,
+        activeSseClients: sseSubscribers.size,
+        uptimeSeconds: Math.floor(process.uptime()),
+        domains: config.domains,
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 13. Admin All Mailboxes
+apiRouter.get('/admin/mailboxes', verifyAdminAuth, (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit || '100', 10);
+    const search = req.query.search || '';
+    const mailboxes = db.getAllMailboxes(limit, search);
+    res.json({ success: true, count: mailboxes.length, mailboxes });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 14. Admin All Recent Emails & Live Feed
+apiRouter.get('/admin/emails', verifyAdminAuth, (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit || '100', 10);
+    const search = req.query.search || '';
+    const rawEmails = db.getRecentEmails(limit, search);
+
+    const emails = rawEmails.map(em => ({
+      ...em,
+      otp: extractOtp(em.subject, em.preview),
+    }));
+
+    res.json({ success: true, count: emails.length, emails });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 15. Admin Delete Mailbox
+apiRouter.delete('/admin/mailbox/:address', verifyAdminAuth, (req, res) => {
+  try {
+    const address = req.params.address.toLowerCase().trim();
+    const deleted = db.deleteMailbox(address);
+    res.json({ success: true, deleted, address });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 16. Admin Delete Single Email
+apiRouter.delete('/admin/email/:id', verifyAdminAuth, (req, res) => {
+  try {
+    const deleted = db.deleteEmailById(req.params.id);
+    res.json({ success: true, deleted, id: req.params.id });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 17. Admin Live SSE Stream
+apiRouter.get('/admin/events', (req, res) => {
+  const token = req.query.token || req.headers['x-admin-key'];
+  const validKey = config.adminPassword || config.webhookSecret || 'admin12345';
+
+  if (token !== validKey) {
+    return res.status(401).end('Unauthorized');
+  }
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+    'Access-Control-Allow-Origin': '*',
+  });
+
+  res.write(`data: ${JSON.stringify({ type: 'admin_connected', time: Date.now() })}\n\n`);
+  adminSseSubscribers.add(res);
+
+  const heartbeat = setInterval(() => {
+    try {
+      res.write(': ping\n\n');
+    } catch {
+      clearInterval(heartbeat);
+    }
+  }, 25000);
+
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    adminSseSubscribers.delete(res);
   });
 });
+

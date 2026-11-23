@@ -26,6 +26,7 @@ export const config = {
   domains: domains.length > 0 ? domains : ['atiar.dpdns.org'],
   defaultDomain: domains[0] || 'atiar.dpdns.org',
   webhookSecret: process.env.WEBHOOK_SECRET || 'temple-secret-key-change-me',
+  adminPassword: process.env.ADMIN_PASSWORD || 'admin12345',
   emailTtlMinutes: parseInt(process.env.EMAIL_TTL_MINUTES || '60', 10), // default 1 hour
   dataDir,
   dbPath: process.env.DB_PATH || path.join(dataDir, 'tempmail.sqlite'),
