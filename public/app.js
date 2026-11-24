@@ -95,6 +95,9 @@ async function loadConfig() {
         domainBadge.textContent = `ডোমেইন: ${data.domains.join(', ')}`;
       }
 
+      // Render quick domain selector pills
+      renderDomainSelector(data.domains);
+
       // Populate custom domain dropdown
       const select = document.getElementById('select-custom-domain');
       if (select) {
@@ -104,6 +107,22 @@ async function loadConfig() {
   } catch (e) {
     console.error('Failed to load server config:', e);
   }
+}
+
+function renderDomainSelector(domains) {
+  const selector = document.getElementById('domain-quick-selector');
+  if (!selector || !domains || domains.length <= 1) return;
+
+  const currentDomain = currentAddress ? currentAddress.split('@')[1] : domains[0];
+  selector.innerHTML = domains.map(d => {
+    const isActive = (currentDomain === d);
+    return `
+      <button class="domain-pill px-3 py-1.5 rounded-full text-xs font-mono font-medium transition flex items-center gap-1.5 ${isActive ? 'bg-brand-600 text-white shadow-md shadow-brand-600/30 border border-brand-500' : 'bg-slate-900/90 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700/80'}" onclick="generateNewEmail('${d}')">
+        <span class="w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}"></span>
+        <span>@${d}</span>
+      </button>
+    `;
+  }).join('');
 }
 
 // Live EventStream (SSE) for 0ms Instant Email & OTP Push
@@ -171,6 +190,11 @@ function setActiveAddress(address) {
   // Connect 0ms live SSE stream
   initLiveStream(currentAddress);
 
+  // Update domain pill highlights
+  if (serverConfig?.domains) {
+    renderDomainSelector(serverConfig.domains);
+  }
+
   // Immediately refresh inbox for new address
   fetchInbox(true);
 }
@@ -196,6 +220,7 @@ async function generateNewEmail(domain) {
     showToast('সার্ভার কানেকশন ত্রুটি', true);
   }
 }
+window.generateNewEmail = generateNewEmail;
 
 // Fetch Inbox Messages
 async function fetchInbox(isManual = false) {

@@ -48,11 +48,18 @@ function getNextRotatingDomain() {
   return domain;
 }
 
+let lastDomainIndex = 0;
+
 function generateRandomAddress(domain) {
-  // Use requested domain if valid, otherwise use the Cloudflare-verified primary domain (atiar.dpdns.org)
-  const chosenDomain = domain && config.domains.includes(domain.toLowerCase())
-    ? domain.toLowerCase()
-    : config.defaultDomain;
+  let chosenDomain;
+  if (domain && config.domains.includes(domain.toLowerCase())) {
+    chosenDomain = domain.toLowerCase();
+  } else {
+    // Round-robin cycling through all verified domains so each change rotates domains
+    const domainList = config.domains.length > 0 ? config.domains : [config.defaultDomain];
+    chosenDomain = domainList[lastDomainIndex % domainList.length];
+    lastDomainIndex = (lastDomainIndex + 1) % domainList.length;
+  }
 
   const prefix = PREFIX_NAMES[Math.floor(Math.random() * PREFIX_NAMES.length)];
   const randomNum = Math.floor(1000 + Math.random() * 9000); // 4 clean digits (e.g. alex4821)
