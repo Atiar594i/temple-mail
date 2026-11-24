@@ -451,10 +451,14 @@ apiRouter.post('/test/simulate', async (req, res) => {
 // ADMIN DASHBOARD API ENDPOINTS
 // ==========================================
 
+function getValidAdminKey() {
+  return db.getSetting('admin_password') || config.adminPassword || 'admin12345';
+}
+
 function verifyAdminAuth(req, res, next) {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : (req.headers['x-admin-key'] || req.query.admin_key);
-  const validKey = config.adminPassword || config.webhookSecret || 'admin12345';
+  const validKey = getValidAdminKey();
 
   if (!token || token !== validKey) {
     return res.status(401).json({ success: false, error: 'Unauthorized: Invalid Admin Password' });
@@ -465,12 +469,33 @@ function verifyAdminAuth(req, res, next) {
 // 11. Admin Login Verification
 apiRouter.post('/admin/auth', (req, res) => {
   const { password } = req.body || {};
-  const validKey = config.adminPassword || config.webhookSecret || 'admin12345';
+  const validKey = getValidAdminKey();
 
   if (password === validKey) {
     res.json({ success: true, token: validKey });
   } else {
     res.status(401).json({ success: false, error: 'ভুল অ্যাডমিন পাসওয়ার্ড' });
+  }
+});
+
+// 11.1 Admin Change Password
+apiRouter.post('/admin/change-password', verifyAdminAuth, (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+    const validKey = getValidAdminKey();
+
+    if (!currentPassword || currentPassword !== validKey) {
+      return res.status(400).json({ success: false, error: 'বর্তমান পাসওয়ার্ডটি সঠিক নয়' });
+    }
+
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.trim().length < 5) {
+      return res.status(400).json({ success: false, error: 'নতুন পাসওয়ার্ড কমপক্ষে ৫ অক্ষরের হতে হবে' });
+    }
+
+    const saved = db.setSetting('admin_password', newPassword.trim());
+    res.json({ success: true, message: 'অ্যাডমিন পাসওয়ার্ড সফলভাবে পরিবর্তিত হয়েছে', newToken: saved });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -556,7 +581,7 @@ apiRouter.delete('/admin/email/:id', verifyAdminAuth, (req, res) => {
 // 17. Admin Live SSE Stream
 apiRouter.get('/admin/events', (req, res) => {
   const token = req.query.token || req.headers['x-admin-key'];
-  const validKey = config.adminPassword || config.webhookSecret || 'admin12345';
+  const validKey = getValidAdminKey();
 
   if (token !== validKey) {
     return res.status(401).end('Unauthorized');

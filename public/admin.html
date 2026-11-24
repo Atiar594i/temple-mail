@@ -35,22 +35,25 @@
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
 
   <!-- Admin Login Overlay -->
-  <div id="login-overlay" class="fixed inset-0 z-50 bg-slate-950 flex items-center justify-center p-4">
+  <div id="login-overlay" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-8 shadow-2xl animate-modalIn text-center">
-      <div class="w-14 h-14 rounded-2xl bg-brand-600/20 text-brand-400 border border-brand-500/30 flex items-center justify-center mx-auto mb-4">
+      <div class="w-14 h-14 rounded-2xl bg-brand-600/20 text-brand-400 border border-brand-500/30 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-brand-500/20">
         <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
         </svg>
       </div>
-      <h2 class="text-xl font-display font-bold text-slate-100 mb-1">অ্যাডমিন লগইন</h2>
-      <p class="text-xs text-slate-400 mb-6">সমস্ত ইউজার ও আগত ওটিপি (OTP) মনিটর করতে পাসওয়ার্ড দিন</p>
+      <h2 class="text-xl font-display font-bold text-slate-100 mb-1">অ্যাডমিন সিকিউরিটি লগইন</h2>
+      <p class="text-xs text-slate-400 mb-6">সমস্ত ইউজার ও আগত ওটিপি (OTP) লাইভ মনিটর করতে পাসওয়ার্ড দিন</p>
 
       <form id="form-login" class="space-y-4">
         <div>
-          <input type="password" id="input-admin-pass" placeholder="অ্যাডমিন পাসওয়ার্ড (ডিফল্ট: admin12345)" required class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-sm focus:outline-none focus:border-brand-500 text-center">
+          <input type="password" id="input-admin-pass" placeholder="অ্যাডমিন পাসওয়ার্ড প্রবেশ করুন" required class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-sm focus:outline-none focus:border-brand-500 text-center tracking-wider">
         </div>
-        <button type="submit" class="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm transition shadow-lg shadow-brand-600/30">
-          ড্যাশবোর্ডে প্রবেশ করুন
+        <button type="submit" class="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm transition shadow-lg shadow-brand-600/30 flex items-center justify-center gap-2">
+          <span>ড্যাশবোর্ডে প্রবেশ করুন</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+          </svg>
         </button>
       </form>
     </div>
@@ -66,18 +69,19 @@
           </svg>
         </div>
         <div>
-          <span class="font-display font-bold text-lg text-white">Temple Admin</span>
-          <span class="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 ml-2">লাইভ মনিটর</span>
+          <span class="font-display font-bold text-lg text-white">Temple Admin Pro</span>
+          <span class="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 ml-2">লাইভ ওটিপি কন্ট্রোল</span>
         </div>
       </div>
 
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2.5">
         <span id="live-indicator" class="hidden sm:flex items-center gap-1.5 text-xs text-emerald-400 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          রিয়েল-টাইম লাইভ
+          রিয়েল-টাইম (0ms)
         </span>
-        <a href="/" class="text-xs px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
-          মেইন সাইটে যান ↗
+        <a href="/" target="_blank" class="text-xs px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition flex items-center gap-1">
+          <span>মেইন সাইট</span>
+          <span class="text-[10px]">↗</span>
         </a>
         <button id="btn-logout" class="text-xs px-3 py-1.5 rounded-xl bg-red-950/40 text-red-300 hover:bg-red-900/50 border border-red-800/40 transition">
           লগআউট
@@ -92,52 +96,58 @@
     <!-- Stat Cards Grid -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <!-- 1. Total Mailboxes -->
-      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-lg">
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-lg hover:border-slate-700 transition">
         <span class="text-xs text-slate-400 block font-medium">মোট ইউজার / ইনবক্স</span>
         <div class="text-2xl sm:text-3xl font-display font-bold text-white mt-1" id="stat-mailboxes">০</div>
         <span class="text-[11px] text-slate-500 mt-1 block">তৈরি করা মোট ঠিকানা</span>
       </div>
 
       <!-- 2. Total Emails -->
-      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-lg">
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-lg hover:border-slate-700 transition">
         <span class="text-xs text-slate-400 block font-medium">সর্বমোট ইমেইল</span>
         <div class="text-2xl sm:text-3xl font-display font-bold text-brand-400 mt-1" id="stat-emails">০</div>
         <span class="text-[11px] text-slate-500 mt-1 block">রিসিভ হওয়া মোট মেসেজ</span>
       </div>
 
       <!-- 3. Total OTPs -->
-      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-lg">
-        <span class="text-xs text-emerald-400 block font-medium">সংগৃহীত ওটিপি (OTP)</span>
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-lg hover:border-slate-700 transition">
+        <span class="text-xs text-emerald-400 block font-medium">শনাক্তকৃত ওটিপি (OTP)</span>
         <div class="text-2xl sm:text-3xl font-display font-bold text-emerald-300 mt-1" id="stat-otps">০</div>
-        <span class="text-[11px] text-slate-500 mt-1 block">শনাক্ত হওয়া কোড</span>
+        <span class="text-[11px] text-slate-500 mt-1 block">টেলিগ্রাম / গুগল কোড</span>
       </div>
 
-      <!-- 4. Uptime -->
-      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-lg">
-        <span class="text-xs text-slate-400 block font-medium">সার্ভার স্ট্যাটাস</span>
-        <div class="text-xl sm:text-2xl font-display font-bold text-sky-400 mt-1 flex items-center gap-2">
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          অনলাইন
+      <!-- 4. Active Domains & Status -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-lg hover:border-slate-700 transition">
+        <span class="text-xs text-slate-400 block font-medium">সার্ভার ও ডোমেইন স্ট্যাটাস</span>
+        <div class="text-base sm:text-lg font-display font-bold text-sky-400 mt-1 flex items-center gap-1.5 truncate">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+          <span>২টি ডোমেইন সক্রিয়</span>
         </div>
-        <span class="text-[11px] text-slate-500 mt-1 block" id="stat-uptime">আপটাইম: ...</span>
+        <span class="text-[11px] text-slate-500 mt-1 block truncate" id="stat-uptime">আপটাইম: ...</span>
       </div>
     </div>
 
     <!-- Controls & Tab Switcher -->
     <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-900/60 p-2 rounded-2xl border border-slate-800">
-      <div class="flex items-center gap-1">
-        <button id="tab-live-feed" class="px-4 py-2 rounded-xl bg-brand-600 text-white font-medium text-xs sm:text-sm transition flex items-center gap-1.5 shadow-md shadow-brand-600/30">
+      <div class="flex items-center gap-1 overflow-x-auto">
+        <button id="tab-live-feed" class="px-4 py-2 rounded-xl bg-brand-600 text-white font-medium text-xs sm:text-sm transition flex items-center gap-1.5 shadow-md shadow-brand-600/30 whitespace-nowrap">
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          লাইভ ওটিপি ও ইমেইল ফিড
+          লাইভ ওটিপি ও ফিড
         </button>
-        <button id="tab-all-mailboxes" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white font-medium text-xs sm:text-sm transition">
+        <button id="tab-all-mailboxes" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white font-medium text-xs sm:text-sm transition whitespace-nowrap">
           সমস্ত ইউজার ইনবক্স
+        </button>
+        <button id="tab-settings" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white font-medium text-xs sm:text-sm transition flex items-center gap-1.5 whitespace-nowrap">
+          <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+          </svg>
+          পাসওয়ার্ড ও সেটিংস
         </button>
       </div>
 
       <div class="flex items-center gap-2">
         <input type="text" id="input-search" placeholder="ইমেইল বা ওটিপি খুঁজুন..." class="px-3.5 py-1.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-brand-500 w-full sm:w-60">
-        <button id="btn-refresh-admin" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition" title="রিফ্রেশ">
+        <button id="btn-refresh-admin" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition shrink-0" title="রিফ্রেশ">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
           </svg>
@@ -146,13 +156,26 @@
     </div>
 
     <!-- Section 1: Live Emails & OTPs Table -->
-    <div id="section-live-feed" class="bg-slate-900/90 border border-slate-800 rounded-3xl p-4 sm:p-6 shadow-xl overflow-hidden">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-base font-display font-semibold text-slate-200 flex items-center gap-2">
-          <span>সর্বশেষ আগত ইমেইল ও ওটিপি সমূহ</span>
-          <span id="badge-email-count" class="text-xs px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30">০টি</span>
-        </h3>
-        <span class="text-xs text-slate-400">নতুন ইমেইল আসলে সাথে সাথে যুক্ত হবে</span>
+    <div id="section-live-feed" class="bg-slate-900/90 border border-slate-800 rounded-3xl p-4 sm:p-6 shadow-xl overflow-hidden space-y-4">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div>
+          <h3 class="text-base font-display font-semibold text-slate-200 flex items-center gap-2">
+            <span>সর্বশেষ আগত ইমেইল ও ওটিপি সমূহ</span>
+            <span id="badge-email-count" class="text-xs px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30">০টি</span>
+          </h3>
+          <span class="text-xs text-slate-400">টেলিগ্রাম বা অন্য যেকোনো কোড আসা মাত্রই রিফ্রেশ ছাড়া লাইভ ভাসবে</span>
+        </div>
+
+        <!-- Filter Buttons & Export -->
+        <div class="flex flex-wrap items-center gap-1.5 text-xs">
+          <button id="filter-all" class="px-2.5 py-1 rounded-lg bg-brand-600 text-white font-medium">সব</button>
+          <button id="filter-otp-only" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white">🔥 শুধুমাত্র OTP</button>
+          <button id="filter-domain-atiar" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white font-mono">@atiar.dpdns.org</button>
+          <button id="filter-domain-progmail" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white font-mono">@progmail.dpdns.org</button>
+          <button id="btn-export-csv" class="px-2.5 py-1 rounded-lg bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-300 border border-emerald-800/40 transition flex items-center gap-1">
+            <span>📥 CSV এক্সপোর্ট</span>
+          </button>
+        </div>
       </div>
 
       <div class="overflow-x-auto">
@@ -185,6 +208,7 @@
           <span>ইউজারদের তৈরি করা সমস্ত ইনবক্স</span>
           <span id="badge-mailbox-count" class="text-xs px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30">০টি</span>
         </h3>
+        <span class="text-xs text-slate-400">ওয়েবসাইট ও API দিয়ে তৈরি হওয়া সমস্ত অ্যাড্রেস</span>
       </div>
 
       <div class="overflow-x-auto">
@@ -202,6 +226,95 @@
             <!-- Dynamic mailbox rows -->
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- Section 3: Settings & Security -->
+    <div id="section-settings" class="space-y-6 hidden">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- 1. Change Password Card -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center justify-center">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-base font-display font-semibold text-slate-100">অ্যাডমিন পাসওয়ার্ড পরিবর্তন</h3>
+              <p class="text-xs text-slate-400">ড্যাশবোর্ডের নিরাপত্তা নিশ্চিত করতে নিয়মিত পাসওয়ার্ড আপডেট করুন</p>
+            </div>
+          </div>
+
+          <form id="form-change-password" class="space-y-3.5 pt-2">
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">বর্তমান পাসওয়ার্ড</label>
+              <input type="password" id="input-curr-pass" required placeholder="বর্তমান পাসওয়ার্ড দিন" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-xs focus:outline-none focus:border-brand-500">
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">নতুন পাসওয়ার্ড (কমপক্ষে ৫ অক্ষর)</label>
+              <input type="password" id="input-new-pass" required minlength="5" placeholder="নতুন শক্তিশালী পাসওয়ার্ড" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-xs focus:outline-none focus:border-brand-500">
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">নতুন পাসওয়ার্ড নিশ্চিত করুন</label>
+              <input type="password" id="input-confirm-pass" required minlength="5" placeholder="পুনরায় নতুন পাসওয়ার্ড লিখুন" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-xs focus:outline-none focus:border-brand-500">
+            </div>
+
+            <div id="pass-msg" class="text-xs hidden p-2.5 rounded-xl"></div>
+
+            <button type="submit" id="btn-submit-pass" class="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-medium text-xs transition shadow-lg shadow-brand-600/30">
+              পাসওয়ার্ড আপডেট ও সংরক্ষণ করুন
+            </button>
+          </form>
+        </div>
+
+        <!-- 2. Active Domains Card -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center justify-center">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-base font-display font-semibold text-slate-100">সক্রিয় রিসিভিং ডোমেইনসমূহ</h3>
+              <p class="text-xs text-slate-400">যেসব ডোমেইনে ক্লাউডফ্লেয়ার ওটিপি রিসিভ হচ্ছে</p>
+            </div>
+          </div>
+
+          <div class="space-y-3 pt-2">
+            <!-- Domain 1 -->
+            <div class="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 flex items-center justify-between">
+              <div>
+                <div class="font-mono text-xs font-semibold text-white">@atiar.dpdns.org</div>
+                <div class="text-[11px] text-slate-400 mt-0.5">Cloudflare Email Worker • Catch-all Active</div>
+              </div>
+              <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-semibold">
+                ভেরিফায়েড
+              </span>
+            </div>
+
+            <!-- Domain 2 -->
+            <div class="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 flex items-center justify-between">
+              <div>
+                <div class="font-mono text-xs font-semibold text-white">@progmail.dpdns.org</div>
+                <div class="text-[11px] text-slate-400 mt-0.5">Cloudflare Email Worker • Catch-all Active</div>
+              </div>
+              <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-semibold">
+                ভেরিফায়েড
+              </span>
+            </div>
+
+            <!-- Note -->
+            <div class="p-3 rounded-xl bg-slate-950/40 border border-slate-800/80 text-[11px] text-slate-400 leading-relaxed">
+              💡 <span class="text-slate-300 font-medium">ডোমেইন রোটেশন:</span> ইউজার যখনই মেইন সাইটে "নতুন র‍্যান্ডম মেইল" বাটনে ক্লিক করবে, স্বয়ংক্রিয়ভাবে একবার <code>@atiar.dpdns.org</code> এবং পরের বার <code>@progmail.dpdns.org</code> দিয়ে ইনবক্স তৈরি হবে।
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 

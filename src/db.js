@@ -38,6 +38,11 @@ export function getDatabase() {
     CREATE INDEX IF NOT EXISTS idx_emails_mailbox ON emails(mailbox_address);
     CREATE INDEX IF NOT EXISTS idx_emails_received_at ON emails(received_at);
     CREATE INDEX IF NOT EXISTS idx_mailboxes_last_accessed ON mailboxes(last_accessed);
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `);
 
   return dbInstance;
@@ -269,5 +274,21 @@ export const db = {
       has_attachments: Boolean(row.has_attachments),
       is_read: Boolean(row.is_read)
     }));
+  },
+
+  getSetting(key, defaultValue = null) {
+    const database = getDatabase();
+    const row = database.prepare('SELECT value FROM settings WHERE key = ?').get(key);
+    return row ? row.value : defaultValue;
+  },
+
+  setSetting(key, value) {
+    const database = getDatabase();
+    const stmt = database.prepare(`
+      INSERT INTO settings (key, value) VALUES (?, ?)
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value
+    `);
+    stmt.run(key, String(value));
+    return value;
   }
 };

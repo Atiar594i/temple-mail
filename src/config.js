@@ -14,8 +14,8 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-// Comma-separated list of domains supported by this instance (atiar.dpdns.org & progmail.dpdns.org)
-const rawDomains = process.env.DOMAINS || process.env.DOMAIN || 'atiar.dpdns.org,progmail.dpdns.org,tempmail.us.mw';
+// Comma-separated list of active email domains (atiar.dpdns.org & progmail.dpdns.org)
+const rawDomains = process.env.DOMAINS || process.env.DOMAIN || 'atiar.dpdns.org,progmail.dpdns.org';
 const domains = rawDomains
   .split(',')
   .map(d => d.trim().toLowerCase())

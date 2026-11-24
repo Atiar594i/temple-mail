@@ -9,6 +9,7 @@
   let adminToken = sessionStorage.getItem('admin_token') || '';
   let eventSource = null;
   let currentTab = 'live-feed';
+  let activeFilter = 'all';
   let cachedEmails = [];
   let cachedMailboxes = [];
 
@@ -25,19 +26,35 @@
   const statUptime = document.getElementById('stat-uptime');
   const liveIndicator = document.getElementById('live-indicator');
 
-  // Tabs & Controls
+  // Tabs & Sections
   const tabLiveFeed = document.getElementById('tab-live-feed');
   const tabAllMailboxes = document.getElementById('tab-all-mailboxes');
+  const tabSettings = document.getElementById('tab-settings');
   const sectionLiveFeed = document.getElementById('section-live-feed');
   const sectionAllMailboxes = document.getElementById('section-all-mailboxes');
+  const sectionSettings = document.getElementById('section-settings');
   const inputSearch = document.getElementById('input-search');
   const btnRefreshAdmin = document.getElementById('btn-refresh-admin');
 
-  // Tables
+  // Tables & Badges
   const tableEmailsBody = document.getElementById('table-emails-body');
   const tableMailboxesBody = document.getElementById('table-mailboxes-body');
   const badgeEmailCount = document.getElementById('badge-email-count');
   const badgeMailboxCount = document.getElementById('badge-mailbox-count');
+
+  // Filter Buttons
+  const filterAll = document.getElementById('filter-all');
+  const filterOtpOnly = document.getElementById('filter-otp-only');
+  const filterDomainAtiar = document.getElementById('filter-domain-atiar');
+  const filterDomainProgmail = document.getElementById('filter-domain-progmail');
+  const btnExportCsv = document.getElementById('btn-export-csv');
+
+  // Password Change Form
+  const formChangePassword = document.getElementById('form-change-password');
+  const inputCurrPass = document.getElementById('input-curr-pass');
+  const inputNewPass = document.getElementById('input-new-pass');
+  const inputConfirmPass = document.getElementById('input-confirm-pass');
+  const passMsg = document.getElementById('pass-msg');
 
   // Modal
   const adminEmailModal = document.getElementById('admin-email-modal');
@@ -98,31 +115,72 @@
     // Tab switching
     tabLiveFeed.addEventListener('click', () => switchTab('live-feed'));
     tabAllMailboxes.addEventListener('click', () => switchTab('all-mailboxes'));
+    if (tabSettings) {
+      tabSettings.addEventListener('click', () => switchTab('settings'));
+    }
+
+    // Filter Buttons
+    if (filterAll) filterAll.addEventListener('click', () => setFilter('all'));
+    if (filterOtpOnly) filterOtpOnly.addEventListener('click', () => setFilter('otp-only'));
+    if (filterDomainAtiar) filterDomainAtiar.addEventListener('click', () => setFilter('atiar.dpdns.org'));
+    if (filterDomainProgmail) filterDomainProgmail.addEventListener('click', () => setFilter('progmail.dpdns.org'));
+
+    // CSV Export
+    if (btnExportCsv) {
+      btnExportCsv.addEventListener('click', exportToCsv);
+    }
+
+    // Password Change Form Submit
+    if (formChangePassword) {
+      formChangePassword.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const currentPassword = inputCurrPass.value.trim();
+        const newPassword = inputNewPass.value.trim();
+        const confirmPassword = inputConfirmPass.value.trim();
+
+        if (newPassword !== confirmPassword) {
+          showPassMessage('নতুন পাসওয়ার্ড দুটি মিলছে না!', false);
+          return;
+        }
+
+        if (newPassword.length < 5) {
+          showPassMessage('নতুন পাসওয়ার্ড কমপক্ষে ৫ অক্ষরের হতে হবে!', false);
+          return;
+        }
+
+        try {
+          const res = await fetch('/api/admin/change-password', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${adminToken}`
+            },
+            body: JSON.stringify({ currentPassword, newPassword }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            adminToken = data.newToken || newPassword;
+            sessionStorage.setItem('admin_token', adminToken);
+            showPassMessage('✅ পাসওয়ার্ড সফলভাবে পরিবর্তিত ও সংরক্ষিত হয়েছে!', true);
+            formChangePassword.reset();
+          } else {
+            showPassMessage(data.error || 'পাসওয়ার্ড পরিবর্তন ব্যর্থ হয়েছে', false);
+          }
+        } catch (err) {
+          showPassMessage('সার্ভার এরর: ' + err.message, false);
+        }
+      });
+    }
 
     // Search filter
-    inputSearch.addEventListener('input', () => {
-      const q = inputSearch.value.toLowerCase().trim();
-      if (currentTab === 'live-feed') {
-        renderEmails(cachedEmails.filter(em => 
-          (em.otp && em.otp.toLowerCase().includes(q)) ||
-          (em.mailbox_address && em.mailbox_address.toLowerCase().includes(q)) ||
-          (em.from_address && em.from_address.toLowerCase().includes(q)) ||
-          (em.from_name && em.from_name.toLowerCase().includes(q)) ||
-          (em.subject && em.subject.toLowerCase().includes(q))
-        ));
-      } else {
-        renderMailboxes(cachedMailboxes.filter(mb => 
-          mb.address.toLowerCase().includes(q)
-        ));
-      }
-    });
+    inputSearch.addEventListener('input', applyFilters);
 
     // Refresh button
     btnRefreshAdmin.addEventListener('click', () => {
       loadStats();
       if (currentTab === 'live-feed') {
         loadEmails();
-      } else {
+      } else if (currentTab === 'all-mailboxes') {
         loadMailboxes();
       }
     });
@@ -137,6 +195,12 @@
         closeModal();
       }
     });
+  }
+
+  function showPassMessage(msg, isSuccess) {
+    if (!passMsg) return;
+    passMsg.textContent = msg;
+    passMsg.className = `text-xs p-2.5 rounded-xl block font-medium ${isSuccess ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/40' : 'bg-red-950/60 text-red-300 border border-red-800/40'}`;
   }
 
   function showLogin() {
@@ -178,18 +242,79 @@
 
   function switchTab(tab) {
     currentTab = tab;
+    const activeClass = 'px-4 py-2 rounded-xl bg-brand-600 text-white font-medium text-xs sm:text-sm transition flex items-center gap-1.5 shadow-md shadow-brand-600/30 whitespace-nowrap';
+    const inactiveClass = 'px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white font-medium text-xs sm:text-sm transition flex items-center gap-1.5 whitespace-nowrap';
+
+    tabLiveFeed.className = (tab === 'live-feed') ? activeClass : inactiveClass;
+    tabAllMailboxes.className = (tab === 'all-mailboxes') ? activeClass : inactiveClass;
+    if (tabSettings) tabSettings.className = (tab === 'settings') ? activeClass : inactiveClass;
+
+    sectionLiveFeed.classList.toggle('hidden', tab !== 'live-feed');
+    sectionAllMailboxes.classList.toggle('hidden', tab !== 'all-mailboxes');
+    if (sectionSettings) sectionSettings.classList.toggle('hidden', tab !== 'settings');
+
     if (tab === 'live-feed') {
-      tabLiveFeed.className = 'px-4 py-2 rounded-xl bg-brand-600 text-white font-medium text-xs sm:text-sm transition flex items-center gap-1.5 shadow-md shadow-brand-600/30';
-      tabAllMailboxes.className = 'px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white font-medium text-xs sm:text-sm transition';
-      sectionLiveFeed.classList.remove('hidden');
-      sectionAllMailboxes.classList.add('hidden');
       inputSearch.placeholder = 'ইমেইল বা ওটিপি খুঁজুন...';
-    } else {
-      tabAllMailboxes.className = 'px-4 py-2 rounded-xl bg-brand-600 text-white font-medium text-xs sm:text-sm transition flex items-center gap-1.5 shadow-md shadow-brand-600/30';
-      tabLiveFeed.className = 'px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white font-medium text-xs sm:text-sm transition flex items-center gap-1.5';
-      sectionLiveFeed.classList.add('hidden');
-      sectionAllMailboxes.classList.remove('hidden');
+    } else if (tab === 'all-mailboxes') {
       inputSearch.placeholder = 'ইউজার ইনবক্স ঠিকানা খুঁজুন...';
+    } else {
+      inputSearch.placeholder = 'খুঁজুন...';
+    }
+  }
+
+  function setFilter(filter) {
+    activeFilter = filter;
+    const btns = [
+      { el: filterAll, name: 'all' },
+      { el: filterOtpOnly, name: 'otp-only' },
+      { el: filterDomainAtiar, name: 'atiar.dpdns.org' },
+      { el: filterDomainProgmail, name: 'progmail.dpdns.org' },
+    ];
+
+    btns.forEach(b => {
+      if (b.el) {
+        b.el.className = (b.name === activeFilter)
+          ? 'px-2.5 py-1 rounded-lg bg-brand-600 text-white font-medium shadow-sm'
+          : 'px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white';
+      }
+    });
+
+    applyFilters();
+  }
+
+  function applyFilters() {
+    const q = inputSearch.value.toLowerCase().trim();
+
+    if (currentTab === 'live-feed') {
+      let filtered = cachedEmails;
+
+      // Filter by active filter pill
+      if (activeFilter === 'otp-only') {
+        filtered = filtered.filter(em => Boolean(em.otp));
+      } else if (activeFilter === 'atiar.dpdns.org') {
+        filtered = filtered.filter(em => em.mailbox_address && em.mailbox_address.endsWith('@atiar.dpdns.org'));
+      } else if (activeFilter === 'progmail.dpdns.org') {
+        filtered = filtered.filter(em => em.mailbox_address && em.mailbox_address.endsWith('@progmail.dpdns.org'));
+      }
+
+      // Filter by search query
+      if (q) {
+        filtered = filtered.filter(em =>
+          (em.otp && em.otp.toLowerCase().includes(q)) ||
+          (em.mailbox_address && em.mailbox_address.toLowerCase().includes(q)) ||
+          (em.from_address && em.from_address.toLowerCase().includes(q)) ||
+          (em.from_name && em.from_name.toLowerCase().includes(q)) ||
+          (em.subject && em.subject.toLowerCase().includes(q))
+        );
+      }
+
+      renderEmails(filtered);
+    } else if (currentTab === 'all-mailboxes') {
+      let filtered = cachedMailboxes;
+      if (q) {
+        filtered = filtered.filter(mb => mb.address.toLowerCase().includes(q));
+      }
+      renderMailboxes(filtered);
     }
   }
 
@@ -209,7 +334,7 @@
 
         const hours = Math.floor(s.uptimeSeconds / 3600);
         const mins = Math.floor((s.uptimeSeconds % 3600) / 60);
-        statUptime.textContent = `আপটাইম: ${hours}ঘণ্টা ${mins}মিনিট`;
+        statUptime.textContent = `সার্ভার আপটাইম: ${hours}ঘণ্টা ${mins}মিনিট`;
       }
     } catch (err) {
       console.error('Stats fetch error:', err);
@@ -220,14 +345,14 @@
   async function loadEmails() {
     if (!adminToken) return;
     try {
-      const res = await fetch('/api/admin/emails?limit=150', {
+      const res = await fetch('/api/admin/emails?limit=200', {
         headers: { 'Authorization': `Bearer ${adminToken}` }
       });
       const data = await res.json();
       if (data.success && data.emails) {
         cachedEmails = data.emails;
         badgeEmailCount.textContent = `${cachedEmails.length}টি`;
-        renderEmails(cachedEmails);
+        applyFilters();
       }
     } catch (err) {
       console.error('Emails fetch error:', err);
@@ -240,7 +365,7 @@
       tableEmailsBody.innerHTML = `
         <tr>
           <td colspan="6" class="text-center py-12 text-slate-500 font-sans">
-            এখনও কোনো ইমেইল আসেনি।
+            কোনো ইমেইল মেসেজ পাওয়া যায়নি।
           </td>
         </tr>
       `;
@@ -295,14 +420,14 @@
   async function loadMailboxes() {
     if (!adminToken) return;
     try {
-      const res = await fetch('/api/admin/mailboxes?limit=200', {
+      const res = await fetch('/api/admin/mailboxes?limit=250', {
         headers: { 'Authorization': `Bearer ${adminToken}` }
       });
       const data = await res.json();
       if (data.success && data.mailboxes) {
         cachedMailboxes = data.mailboxes;
         badgeMailboxCount.textContent = `${cachedMailboxes.length}টি`;
-        renderMailboxes(cachedMailboxes);
+        applyFilters();
       }
     } catch (err) {
       console.error('Mailboxes fetch error:', err);
@@ -323,7 +448,7 @@
     }
 
     tableMailboxesBody.innerHTML = mailboxes.map(mb => {
-      const createdAt = mb.created_at ? new Date(mb.created_at).toLocaleString() : 'N/A';
+      const createdAt = mb.created_at ? new Date(mb.created_at * 1000).toLocaleString() : 'N/A';
       const lastActive = formatTime(mb.last_accessed || mb.last_active_at);
       const emailCount = mb.email_count ?? mb.received_count ?? 0;
 
@@ -406,54 +531,8 @@
       }
     }
 
-    // Prepend row to table if on live-feed
-    if (currentTab === 'live-feed') {
-      const otpBadge = email.otp ? `
-        <div class="flex items-center gap-1.5">
-          <span class="inline-block px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40 text-sm tracking-wider shadow-sm select-all animate-bounce">
-            ${escapeHtml(email.otp)}
-          </span>
-          <button class="p-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition" onclick="copyText('${escapeHtml(email.otp)}', this)" title="ওটিপি কপি করুন">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-            </svg>
-          </button>
-        </div>
-      ` : `<span class="text-slate-600 font-sans text-xs">কোনো কোড নেই</span>`;
-
-      const newRowHtml = `
-        <tr class="bg-brand-900/30 hover:bg-slate-800/40 transition duration-1000" id="email-row-${email.id}">
-          <td class="py-3 px-4">${otpBadge}</td>
-          <td class="py-3 px-4">
-            <span class="text-brand-300 font-medium select-all">${escapeHtml(email.mailbox_address || '')}</span>
-          </td>
-          <td class="py-3 px-4 max-w-[180px] truncate" title="${escapeHtml(email.from_address || '')}">
-            <div class="text-slate-200 font-medium truncate">${escapeHtml(email.from_name || email.from_address || '')}</div>
-            <div class="text-[11px] text-slate-500 truncate">${escapeHtml(email.from_address || '')}</div>
-          </td>
-          <td class="py-3 px-4 max-w-[280px]">
-            <div class="text-slate-100 font-medium truncate">${escapeHtml(email.subject || '(No Subject)')}</div>
-            <div class="text-[11px] text-slate-500 truncate font-sans">${escapeHtml(email.preview || '')}</div>
-          </td>
-          <td class="py-3 px-4 text-emerald-400 font-sans text-[11px] whitespace-nowrap font-bold">এখনই আসল!</td>
-          <td class="py-3 px-4 text-right whitespace-nowrap">
-            <button class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition font-sans text-xs mr-1" onclick="viewEmail('${email.id}')">
-              ভিউ
-            </button>
-            <button class="px-2 py-1 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-400 transition font-sans text-xs" onclick="deleteEmail('${email.id}')" title="মুছুন">
-              ✕
-            </button>
-          </td>
-        </tr>
-      `;
-
-      // If empty placeholder exists, clear it
-      if (tableEmailsBody.innerText.includes('এখনও কোনো ইমেইল আসেনি') || tableEmailsBody.innerText.includes('লোড হচ্ছে')) {
-        tableEmailsBody.innerHTML = '';
-      }
-
-      tableEmailsBody.insertAdjacentHTML('afterbegin', newRowHtml);
-    }
+    // Refresh view according to active filter
+    applyFilters();
   }
 
   // Handle Live Mailbox Creation Push (from API or Web)
@@ -462,8 +541,8 @@
     if (!existing) {
       cachedMailboxes.unshift({
         address: mb.address,
-        created_at: mb.created_at ? mb.created_at * 1000 : Date.now(),
-        last_accessed: mb.last_accessed ? mb.last_accessed * 1000 : Date.now(),
+        created_at: mb.created_at ? mb.created_at : Math.floor(Date.now() / 1000),
+        last_accessed: mb.last_accessed ? mb.last_accessed : Math.floor(Date.now() / 1000),
         email_count: 0,
       });
 
@@ -472,9 +551,8 @@
       statMailboxes.textContent = (currentMailboxes + 1).toLocaleString();
       badgeMailboxCount.textContent = `${cachedMailboxes.length}টি`;
 
-      // If viewing mailboxes tab, re-render
       if (currentTab === 'all-mailboxes') {
-        renderMailboxes(cachedMailboxes);
+        applyFilters();
       }
     }
   }
@@ -552,6 +630,35 @@
     }
   };
 
+  // Export to CSV
+  function exportToCsv() {
+    if (!cachedEmails || cachedEmails.length === 0) {
+      alert('এক্সপোর্ট করার মতো কোনো ইমেইল পাওয়া যায়নি।');
+      return;
+    }
+
+    const headers = ['OTP', 'Mailbox (Recipient)', 'From Name', 'From Address', 'Subject', 'Preview', 'Received At'];
+    const rows = cachedEmails.map(em => [
+      `"${(em.otp || '').replace(/"/g, '""')}"`,
+      `"${(em.mailbox_address || '').replace(/"/g, '""')}"`,
+      `"${(em.from_name || '').replace(/"/g, '""')}"`,
+      `"${(em.from_address || '').replace(/"/g, '""')}"`,
+      `"${(em.subject || '').replace(/"/g, '""')}"`,
+      `"${(em.preview || '').replace(/"/g, '""')}"`,
+      `"${new Date(em.received_at).toLocaleString()}"`,
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `temple_mail_otps_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
   // Copy helper
   window.copyText = function (text, btn) {
     navigator.clipboard.writeText(text).then(() => {
@@ -579,12 +686,13 @@
   function formatTime(timestamp) {
     if (!timestamp) return '';
     const now = Date.now();
-    const diff = Math.floor((now - new Date(timestamp).getTime()) / 1000);
+    const ts = typeof timestamp === 'number' && timestamp < 10000000000 ? timestamp * 1000 : new Date(timestamp).getTime();
+    const diff = Math.floor((now - ts) / 1000);
 
     if (diff < 60) return 'এইমাত্র';
     if (diff < 3600) return `${Math.floor(diff / 60)} মিনিট আগে`;
     if (diff < 86400) return `${Math.floor(diff / 3600)} ঘণ্টা আগে`;
-    return new Date(timestamp).toLocaleDateString();
+    return new Date(ts).toLocaleDateString();
   }
 
   // Request browser notification permission once loaded
