@@ -45,7 +45,7 @@
   // Filter Buttons
   const filterAll = document.getElementById('filter-all');
   const filterOtpOnly = document.getElementById('filter-otp-only');
-  const filterDomainAtiar = document.getElementById('filter-domain-atiar');
+  const filterDomainTempgmail = document.getElementById('filter-domain-tempgmail');
   const filterDomainProgmail = document.getElementById('filter-domain-progmail');
   const btnExportCsv = document.getElementById('btn-export-csv');
 
@@ -122,7 +122,7 @@
     // Filter Buttons
     if (filterAll) filterAll.addEventListener('click', () => setFilter('all'));
     if (filterOtpOnly) filterOtpOnly.addEventListener('click', () => setFilter('otp-only'));
-    if (filterDomainAtiar) filterDomainAtiar.addEventListener('click', () => setFilter('atiar.dpdns.org'));
+    if (filterDomainTempgmail) filterDomainTempgmail.addEventListener('click', () => setFilter('tempgmail.dpdns.org'));
     if (filterDomainProgmail) filterDomainProgmail.addEventListener('click', () => setFilter('progmail.dpdns.org'));
 
     // CSV Export
@@ -267,7 +267,7 @@
     const btns = [
       { el: filterAll, name: 'all' },
       { el: filterOtpOnly, name: 'otp-only' },
-      { el: filterDomainAtiar, name: 'atiar.dpdns.org' },
+      { el: filterDomainTempgmail, name: 'tempgmail.dpdns.org' },
       { el: filterDomainProgmail, name: 'progmail.dpdns.org' },
     ];
 
@@ -291,8 +291,8 @@
       // Filter by active filter pill
       if (activeFilter === 'otp-only') {
         filtered = filtered.filter(em => Boolean(em.otp));
-      } else if (activeFilter === 'atiar.dpdns.org') {
-        filtered = filtered.filter(em => em.mailbox_address && em.mailbox_address.endsWith('@atiar.dpdns.org'));
+      } else if (activeFilter === 'tempgmail.dpdns.org') {
+        filtered = filtered.filter(em => em.mailbox_address && em.mailbox_address.endsWith('@tempgmail.dpdns.org'));
       } else if (activeFilter === 'progmail.dpdns.org') {
         filtered = filtered.filter(em => em.mailbox_address && em.mailbox_address.endsWith('@progmail.dpdns.org'));
       }

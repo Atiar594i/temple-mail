@@ -14,8 +14,8 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-// Comma-separated list of active email domains (atiar.dpdns.org & progmail.dpdns.org)
-const rawDomains = process.env.DOMAINS || process.env.DOMAIN || 'atiar.dpdns.org,progmail.dpdns.org';
+// Comma-separated list of active email domains (tempgmail.dpdns.org & progmail.dpdns.org)
+const rawDomains = process.env.DOMAINS || process.env.DOMAIN || 'tempgmail.dpdns.org,progmail.dpdns.org';
 const domains = rawDomains
   .split(',')
   .map(d => d.trim().toLowerCase())
@@ -23,8 +23,8 @@ const domains = rawDomains
 
 export const config = {
   port: parseInt(process.env.PORT || '3000', 10),
-  domains: domains.length > 0 ? domains : ['atiar.dpdns.org'],
-  defaultDomain: domains[0] || 'atiar.dpdns.org',
+  domains: domains.length > 0 ? domains : ['tempgmail.dpdns.org'],
+  defaultDomain: domains[0] || 'tempgmail.dpdns.org',
   webhookSecret: process.env.WEBHOOK_SECRET || 'temple-secret-key-change-me',
   adminPassword: process.env.ADMIN_PASSWORD || 'admin12345',
   emailTtlMinutes: parseInt(process.env.EMAIL_TTL_MINUTES || '60', 10), // default 1 hour

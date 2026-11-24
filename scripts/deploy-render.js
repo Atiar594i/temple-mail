@@ -38,7 +38,7 @@ async function createRenderService() {
         startCommand: 'npm start'
       },
       envVars: [
-        { key: 'DOMAINS', value: 'atiar.dpdns.org' },
+        { key: 'DOMAINS', value: 'tempgmail.dpdns.org,progmail.dpdns.org' },
         { key: 'WEBHOOK_SECRET', value: 'temple-secret-key-12345' },
         { key: 'EMAIL_TTL_MINUTES', value: '60' },
         { key: 'SITE_TITLE', value: 'Temple - Instant Temp Mail' }
