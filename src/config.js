@@ -14,8 +14,8 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-// Comma-separated list of domains supported by this instance (atiar.dpdns.org is Cloudflare-verified)
-const rawDomains = process.env.DOMAINS || process.env.DOMAIN || 'atiar.dpdns.org,tempmail.us.mw,mailt.fs.kg,mamamail.bg5.net,maile.nastu.net';
+// Comma-separated list of domains supported by this instance (atiar.dpdns.org & progmail.dpdns.org)
+const rawDomains = process.env.DOMAINS || process.env.DOMAIN || 'atiar.dpdns.org,progmail.dpdns.org,tempmail.us.mw';
 const domains = rawDomains
   .split(',')
   .map(d => d.trim().toLowerCase())
