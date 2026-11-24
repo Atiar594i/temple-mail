@@ -74,14 +74,14 @@ function formatTimeAgo(epochSeconds) {
   const now = Math.floor(Date.now() / 1000);
   const diff = Math.max(0, now - epochSeconds);
 
-  if (diff < 30) return 'এইমাত্র';
-  if (diff < 60) return `${diff} সেকেন্ড আগে`;
+  if (diff < 30) return 'just now';
+  if (diff < 60) return `${diff}s ago`;
   const mins = Math.floor(diff / 60);
-  if (mins < 60) return `${mins} মিনিট আগে`;
+  if (mins < 60) return `${mins}m ago`;
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} ঘণ্টা আগে`;
+  if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
-  return `${days} দিন আগে`;
+  return `${days}d ago`;
 }
 
 // Load Server Configuration
@@ -92,7 +92,7 @@ async function loadConfig() {
     if (data.success) {
       serverConfig = data;
       if (domainBadge) {
-        domainBadge.textContent = `ডোমেইন: ${data.domains.join(', ')}`;
+        domainBadge.textContent = `Domains: ${data.domains.join(', ')}`;
       }
 
       // Render quick domain selector pills
@@ -151,16 +151,16 @@ function initLiveStream(address) {
           // Prepend immediately to inbox list
           cachedEmails.unshift(newEm);
           renderEmailList(cachedEmails);
-          inboxBadgeEl.textContent = `${cachedEmails.length}টি মেইল`;
+          inboxBadgeEl.textContent = `${cachedEmails.length} email${cachedEmails.length === 1 ? '' : 's'}`;
 
           // Sound and Instant OTP Alert
           playChimeSound();
           if (newEm.otp) {
-            showToast(`🔥 ওটিপি কোড: ${newEm.otp}`);
-            document.title = `🔑 (${newEm.otp}) ওটিপি এসেছে! - Temple Mail`;
+            showToast(`🔥 OTP Code: ${newEm.otp}`);
+            document.title = `🔑 (${newEm.otp}) OTP Received! - Temple Mail`;
           } else {
-            showToast('নতুন ইমেইল এসেছে!');
-            document.title = `📩 নতুন ইমেইল - Temple Mail`;
+            showToast('New email received!');
+            document.title = `📩 New Email - Temple Mail`;
           }
         }
       } catch (e) {
@@ -178,31 +178,25 @@ function initLiveStream(address) {
 
 // Set Active Email
 function setActiveAddress(address) {
-  currentAddress = address.toLowerCase().trim();
-  localStorage.setItem(STORAGE_KEY, currentAddress);
-  currentEmailEl.textContent = currentAddress;
-  knownEmailIds.clear();
-  cachedEmails = [];
+  currentAddress = address;
+  localStorage.setItem(STORAGE_KEY, address);
+  currentEmailEl.textContent = address;
 
-  // Reset QR code if open
-  updateQRCode();
-
-  // Connect 0ms live SSE stream
-  initLiveStream(currentAddress);
-
-  // Update domain pill highlights
   if (serverConfig?.domains) {
     renderDomainSelector(serverConfig.domains);
   }
 
-  // Immediately refresh inbox for new address
+  knownEmailIds.clear();
+  cachedEmails = [];
   fetchInbox(true);
+  updateQRCode();
+  initLiveStream(address);
 }
 
 // Generate New Random Address (rotates through all domains automatically)
 async function generateNewEmail(domain) {
   try {
-    currentEmailEl.innerHTML = '<span class="inline-flex items-center gap-1.5 text-slate-400"><svg class="w-4 h-4 animate-spin text-brand-400" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> নতুন মেইল তৈরি হচ্ছে...</span>';
+    currentEmailEl.innerHTML = '<span class="inline-flex items-center gap-1.5 text-slate-400"><svg class="w-4 h-4 animate-spin text-brand-400" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> Generating address...</span>';
 
     const res = await fetch('/api/mailbox/generate', {
       method: 'POST',
@@ -212,12 +206,12 @@ async function generateNewEmail(domain) {
     const data = await res.json();
     if (data.success) {
       setActiveAddress(data.address);
-      showToast(`নতুন ইমেইল অ্যাক্টিভ হয়েছে! (@${data.address.split('@')[1]})`);
+      showToast(`Active mailbox: @${data.address.split('@')[1]}`);
     } else {
-      showToast(data.error || 'ইমেইল তৈরি ব্যর্থ হয়েছে', true);
+      showToast(data.error || 'Failed to generate mailbox', true);
     }
   } catch (err) {
-    showToast('সার্ভার কানেকশন ত্রুটি', true);
+    showToast('Server connection error', true);
   }
 }
 window.generateNewEmail = generateNewEmail;
@@ -243,7 +237,7 @@ async function fetchInbox(isManual = false) {
     if (data.success) {
       const emails = data.emails || [];
       cachedEmails = emails;
-      inboxBadgeEl.textContent = `${emails.length}টি মেইল`;
+      inboxBadgeEl.textContent = `${emails.length} email${emails.length === 1 ? '' : 's'}`;
 
       // Check for new emails to trigger chime & title update
       let hasNew = false;
@@ -262,20 +256,20 @@ async function fetchInbox(isManual = false) {
       if (hasNew) {
         playChimeSound();
         if (latestOtp) {
-          showToast(`নতুন ওটিপি কোড: ${latestOtp}`);
-          document.title = `🔥 (${latestOtp}) ওটিপি এসেছে! - Temple Mail`;
+          showToast(`New OTP Code: ${latestOtp}`);
+          document.title = `🔥 (${latestOtp}) OTP Received! - Temple Mail`;
         } else {
-          showToast('নতুন ইমেইল এসেছে!');
-          document.title = `📩 (${emails.length}) নতুন মেইল - Temple Mail`;
+          showToast('New email received!');
+          document.title = `📩 (${emails.length}) New Emails - Temple Mail`;
         }
       }
 
       renderEmailList(emails);
-      inboxStatusIndicator.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400"></span> লাইভ (৩ সে.)';
+      inboxStatusIndicator.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400"></span> Live (SSE 0ms)';
     }
   } catch (err) {
     console.error('Inbox fetch error:', err);
-    inboxStatusIndicator.innerHTML = '<span class="w-2 h-2 rounded-full bg-red-400"></span> কানেক্টিং...';
+    inboxStatusIndicator.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400"></span> Reconnecting...';
   } finally {
     if (iconRefresh) {
       setTimeout(() => iconRefresh.classList.remove('spinning'), 400);
@@ -314,7 +308,7 @@ function renderEmailList(emails) {
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
           </svg>
-          <span>কপি</span>
+          <span>Copy</span>
         </button>
       </div>
     ` : '';
@@ -338,7 +332,7 @@ function renderEmailList(emails) {
           </div>
 
           <div class="flex items-center gap-1.5 shrink-0">
-            <button data-delete-id="${email.id}" class="btn-item-delete p-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-950/30 transition" title="মুছুন">
+            <button data-delete-id="${email.id}" class="btn-item-delete p-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-950/30 transition" title="Delete">
               <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
               </svg>
@@ -367,9 +361,9 @@ function renderEmailList(emails) {
       const otp = btn.dataset.otp;
       if (otp) {
         navigator.clipboard.writeText(otp).then(() => {
-          showToast(`ওটিপি কোড "${otp}" কপি করা হয়েছে!`);
+          showToast(`OTP Code "${otp}" copied!`);
         }).catch(() => {
-          showToast('কপি করতে ব্যর্থ', true);
+          showToast('Failed to copy', true);
         });
       }
     });
@@ -394,7 +388,7 @@ async function openEmailModal(emailId) {
     const res = await fetch(`/api/email/${emailId}`);
     const data = await res.json();
     if (!data.success || !data.email) {
-      showToast('ইমেইল লোড করতে ব্যর্থ', true);
+      showToast('Failed to load email', true);
       return;
     }
 
@@ -403,7 +397,7 @@ async function openEmailModal(emailId) {
 
     document.getElementById('modal-subject').textContent = em.subject || '(No Subject)';
     document.getElementById('modal-from').textContent = em.from_name ? `${em.from_name} <${em.from_address}>` : em.from_address;
-    document.getElementById('modal-date').textContent = new Date(em.received_at * 1000).toLocaleString('bn-BD');
+    document.getElementById('modal-date').textContent = new Date(em.received_at * 1000).toLocaleString('en-US');
     document.getElementById('modal-sender-avatar').textContent = (em.from_name || em.from_address || 'M').charAt(0).toUpperCase();
     document.getElementById('modal-recipient-tag').textContent = `To: ${em.mailbox_address}`;
 
@@ -411,14 +405,14 @@ async function openEmailModal(emailId) {
     if (em.otp) {
       document.getElementById('modal-recipient-tag').innerHTML = `
         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/20 text-emerald-300 font-mono font-bold text-xs border border-emerald-500/40">
-          🔑 ওটিপি: ${em.otp}
+          🔑 OTP: ${em.otp}
         </span>
       `;
     }
 
     // Render HTML in sandboxed iframe
     const iframe = document.getElementById('email-iframe');
-    const content = em.html_body || `<pre style="font-family: monospace; white-space: pre-wrap; padding: 15px; color: #1e293b;">${escapeHtml(em.text_body || 'ইমেইলটিতে কোনো টেক্সট নেই')}</pre>`;
+    const content = em.html_body || `<pre style="font-family: monospace; white-space: pre-wrap; padding: 15px; color: #1e293b;">${escapeHtml(em.text_body || 'This email has no text content')}</pre>`;
     iframe.srcdoc = `
       <!DOCTYPE html>
       <html>
@@ -496,50 +490,50 @@ async function deleteEmail(id) {
     const data = await res.json();
     if (data.success) {
       knownEmailIds.delete(id);
-      showToast('ইমেইল সফলভাবে মুছে ফেলা হয়েছে');
+      showToast('Email deleted successfully');
       fetchInbox();
     }
   } catch (e) {
-    showToast('ইমেইল মুছতে ব্যর্থ', true);
+    showToast('Failed to delete email', true);
   }
 }
 
 // Delete Current Mailbox
 async function deleteCurrentMailbox() {
   if (!currentAddress) return;
-  if (!confirm(`আপনি কি নিশ্চিত যে "${currentAddress}" ইনবক্স ও এর সকল ইমেইল মুছে ফেলতে চান?`)) return;
+  if (!confirm(`Are you sure you want to delete mailbox "${currentAddress}" and all its messages?`)) return;
 
   try {
     await fetch(`/api/mailbox/${encodeURIComponent(currentAddress)}`, { method: 'DELETE' });
-    showToast('ইনবক্স মুছে ফেলা হয়েছে!');
+    showToast('Mailbox deleted successfully!');
     generateNewEmail();
   } catch (e) {
-    showToast('ইনবক্স মুছতে ব্যর্থ', true);
+    showToast('Failed to delete mailbox', true);
   }
 }
 
 // Send Quick Test Simulation Email
 async function simulateTestEmail() {
   if (!currentAddress) return;
-  showToast('টেস্ট ইমেইল পাঠানো হচ্ছে...');
+  showToast('Sending test email...');
   try {
     const res = await fetch('/api/test/simulate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         to: currentAddress,
-        fromName: 'DigitalPlat & Temple Verification',
+        fromName: 'Security Verification Service',
         fromAddress: 'security@temple-verify.com',
-        subject: `ভেরিফিকেশন কোড: ${Math.floor(100000 + Math.random() * 900000)}`,
+        subject: `Verification Code: ${Math.floor(100000 + Math.random() * 900000)}`,
       })
     });
     const data = await res.json();
     if (data.success) {
-      showToast('টেস্ট ইমেইল সফলভাবে ইনবক্সে পাঠানো হয়েছে!');
+      showToast('Test verification email delivered to inbox!');
       fetchInbox(true);
     }
   } catch (e) {
-    showToast('সিমুলেশন ব্যর্থ হয়েছে', true);
+    showToast('Simulation failed', true);
   }
 }
 
@@ -571,7 +565,7 @@ function startAutoRefreshLoop() {
     }
 
     if (countdownText) {
-      countdownText.textContent = `${countdownRemaining} সেকেন্ড`;
+      countdownText.textContent = `${countdownRemaining}s`;
     }
     if (countdownProgress) {
       const percentage = (countdownRemaining / REFRESH_INTERVAL) * 100;
@@ -616,9 +610,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-copy-email').addEventListener('click', () => {
     if (currentAddress) {
       navigator.clipboard.writeText(currentAddress).then(() => {
-        showToast('ইমেইল অ্যাড্রেস ক্লিপবোর্ডে কপি করা হয়েছে!');
+        showToast('Email address copied to clipboard!');
       }).catch(() => {
-        showToast('কপি করতে ব্যর্থ হয়েছে', true);
+        showToast('Failed to copy address', true);
       });
     }
   });
@@ -678,12 +672,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (data.success) {
         customModal.classList.add('hidden');
         setActiveAddress(data.address);
-        showToast(`কাস্টম ইমেইল "${data.address}" তৈরি হয়েছে!`);
+        showToast(`Custom address "${data.address}" created!`);
       } else {
-        showToast(data.error || 'ত্রুটি ঘটেছে', true);
+        showToast(data.error || 'Failed to create custom address', true);
       }
     } catch (err) {
-      showToast('সার্ভার কানেকশন ত্রুটি', true);
+      showToast('Server connection error', true);
     }
   });
 
@@ -714,6 +708,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-toggle-sound').addEventListener('click', () => {
     soundEnabled = !soundEnabled;
     localStorage.setItem(SOUND_KEY, soundEnabled ? 'true' : 'false');
-    showToast(soundEnabled ? 'নোটিফিকেশন সাউন্ড চালু করা হয়েছে' : 'নোটিফিকেশন সাউন্ড বন্ধ করা হয়েছে');
+    showToast(soundEnabled ? 'Notification sound enabled' : 'Notification sound disabled');
   });
 });

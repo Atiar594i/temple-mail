@@ -201,16 +201,11 @@ export const db = {
   },
 
   cleanupExpired(ttlMinutes = config.emailTtlMinutes) {
-    const database = getDatabase();
-    const cutoffTime = Math.floor(Date.now() / 1000) - (ttlMinutes * 60);
-
-    const deletedEmails = database.prepare(`DELETE FROM emails WHERE received_at < ?`).run(cutoffTime);
-    const deletedBoxes = database.prepare(`DELETE FROM mailboxes WHERE last_accessed < ?`).run(cutoffTime);
-
+    // Permanent retention: preserve all user mailboxes, emails, and OTPs indefinitely
     return {
-      deletedEmails: deletedEmails.changes,
-      deletedMailboxes: deletedBoxes.changes,
-      cutoffTime,
+      deletedEmails: 0,
+      deletedMailboxes: 0,
+      cutoffTime: 0,
     };
   },
 

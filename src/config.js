@@ -27,9 +27,9 @@ export const config = {
   defaultDomain: domains[0] || 'tempgmail.dpdns.org',
   webhookSecret: process.env.WEBHOOK_SECRET || 'temple-secret-key-change-me',
   adminPassword: process.env.ADMIN_PASSWORD || 'admin12345',
-  emailTtlMinutes: parseInt(process.env.EMAIL_TTL_MINUTES || '60', 10), // default 1 hour
+  emailTtlMinutes: parseInt(process.env.EMAIL_TTL_MINUTES || '0', 10), // 0 = permanent retention (never delete)
   dataDir,
   dbPath: process.env.DB_PATH || path.join(dataDir, 'tempmail.sqlite'),
   siteTitle: process.env.SITE_TITLE || 'Temple - Instant Disposable Temp Mail',
-  maxEmailsPerMailbox: parseInt(process.env.MAX_EMAILS_PER_MAILBOX || '100', 10),
+  maxEmailsPerMailbox: parseInt(process.env.MAX_EMAILS_PER_MAILBOX || '50000', 10),
 };

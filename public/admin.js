@@ -94,10 +94,10 @@
           hideLogin();
           initDashboard();
         } else {
-          alert(data.error || 'ভুল অ্যাডমিন পাসওয়ার্ড!');
+          alert(data.error || 'Invalid admin password!');
         }
       } catch (err) {
-        alert('সার্ভার কানেকশন এরর: ' + err.message);
+        alert('Server connection error: ' + err.message);
       }
     });
 
@@ -139,12 +139,12 @@
         const confirmPassword = inputConfirmPass.value.trim();
 
         if (newPassword !== confirmPassword) {
-          showPassMessage('নতুন পাসওয়ার্ড দুটি মিলছে না!', false);
+          showPassMessage('Passwords do not match!', false);
           return;
         }
 
         if (newPassword.length < 5) {
-          showPassMessage('নতুন পাসওয়ার্ড কমপক্ষে ৫ অক্ষরের হতে হবে!', false);
+          showPassMessage('New password must be at least 5 characters long!', false);
           return;
         }
 
@@ -161,13 +161,13 @@
           if (data.success) {
             adminToken = data.newToken || newPassword;
             sessionStorage.setItem('admin_token', adminToken);
-            showPassMessage('✅ পাসওয়ার্ড সফলভাবে পরিবর্তিত ও সংরক্ষিত হয়েছে!', true);
+            showPassMessage('✅ Password updated and saved successfully!', true);
             formChangePassword.reset();
           } else {
-            showPassMessage(data.error || 'পাসওয়ার্ড পরিবর্তন ব্যর্থ হয়েছে', false);
+            showPassMessage(data.error || 'Password update failed', false);
           }
         } catch (err) {
-          showPassMessage('সার্ভার এরর: ' + err.message, false);
+          showPassMessage('Server error: ' + err.message, false);
         }
       });
     }
@@ -254,11 +254,11 @@
     if (sectionSettings) sectionSettings.classList.toggle('hidden', tab !== 'settings');
 
     if (tab === 'live-feed') {
-      inputSearch.placeholder = 'ইমেইল বা ওটিপি খুঁজুন...';
+      inputSearch.placeholder = 'Search address, sender, or OTP...';
     } else if (tab === 'all-mailboxes') {
-      inputSearch.placeholder = 'ইউজার ইনবক্স ঠিকানা খুঁজুন...';
+      inputSearch.placeholder = 'Search user mailbox address...';
     } else {
-      inputSearch.placeholder = 'খুঁজুন...';
+      inputSearch.placeholder = 'Search...';
     }
   }
 
@@ -334,7 +334,7 @@
 
         const hours = Math.floor(s.uptimeSeconds / 3600);
         const mins = Math.floor((s.uptimeSeconds % 3600) / 60);
-        statUptime.textContent = `সার্ভার আপটাইম: ${hours}ঘণ্টা ${mins}মিনিট`;
+        statUptime.textContent = `Server Uptime: ${hours}h ${mins}m`;
       }
     } catch (err) {
       console.error('Stats fetch error:', err);
@@ -345,13 +345,13 @@
   async function loadEmails() {
     if (!adminToken) return;
     try {
-      const res = await fetch('/api/admin/emails?limit=200', {
+      const res = await fetch('/api/admin/emails?limit=250', {
         headers: { 'Authorization': `Bearer ${adminToken}` }
       });
       const data = await res.json();
       if (data.success && data.emails) {
         cachedEmails = data.emails;
-        badgeEmailCount.textContent = `${cachedEmails.length}টি`;
+        badgeEmailCount.textContent = `${cachedEmails.length}`;
         applyFilters();
       }
     } catch (err) {
@@ -365,7 +365,7 @@
       tableEmailsBody.innerHTML = `
         <tr>
           <td colspan="6" class="text-center py-12 text-slate-500 font-sans">
-            কোনো ইমেইল মেসেজ পাওয়া যায়নি।
+            No email messages found.
           </td>
         </tr>
       `;
@@ -378,13 +378,13 @@
           <span class="inline-block px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40 text-sm tracking-wider shadow-sm select-all">
             ${escapeHtml(em.otp)}
           </span>
-          <button class="p-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition" onclick="copyText('${escapeHtml(em.otp)}', this)" title="ওটিপি কপি করুন">
+          <button class="p-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition" onclick="copyText('${escapeHtml(em.otp)}', this)" title="Copy OTP Code">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
             </svg>
           </button>
         </div>
-      ` : `<span class="text-slate-600 font-sans text-xs">কোনো কোড নেই</span>`;
+      ` : `<span class="text-slate-600 font-sans text-xs">No code</span>`;
 
       const timeAgo = formatTime(em.received_at);
 
@@ -405,9 +405,9 @@
           <td class="py-3 px-4 text-slate-400 font-sans text-[11px] whitespace-nowrap">${timeAgo}</td>
           <td class="py-3 px-4 text-right whitespace-nowrap">
             <button class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition font-sans text-xs mr-1" onclick="viewEmail('${em.id}')">
-              ভিউ
+              View
             </button>
-            <button class="px-2 py-1 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-400 transition font-sans text-xs" onclick="deleteEmail('${em.id}')" title="মুছুন">
+            <button class="px-2 py-1 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-400 transition font-sans text-xs" onclick="deleteEmail('${em.id}')" title="Delete">
               ✕
             </button>
           </td>
@@ -420,13 +420,13 @@
   async function loadMailboxes() {
     if (!adminToken) return;
     try {
-      const res = await fetch('/api/admin/mailboxes?limit=250', {
+      const res = await fetch('/api/admin/mailboxes?limit=500', {
         headers: { 'Authorization': `Bearer ${adminToken}` }
       });
       const data = await res.json();
       if (data.success && data.mailboxes) {
         cachedMailboxes = data.mailboxes;
-        badgeMailboxCount.textContent = `${cachedMailboxes.length}টি`;
+        badgeMailboxCount.textContent = `${cachedMailboxes.length}`;
         applyFilters();
       }
     } catch (err) {
@@ -440,7 +440,7 @@
       tableMailboxesBody.innerHTML = `
         <tr>
           <td colspan="5" class="text-center py-12 text-slate-500 font-sans">
-            কোনো ইনবক্স পাওয়া যায়নি।
+            No mailboxes found.
           </td>
         </tr>
       `;
@@ -448,7 +448,7 @@
     }
 
     tableMailboxesBody.innerHTML = mailboxes.map(mb => {
-      const createdAt = mb.created_at ? new Date(mb.created_at * 1000).toLocaleString() : 'N/A';
+      const createdAt = mb.created_at ? new Date(mb.created_at * 1000).toLocaleString('en-US') : 'N/A';
       const lastActive = formatTime(mb.last_accessed || mb.last_active_at);
       const emailCount = mb.email_count ?? mb.received_count ?? 0;
 
@@ -459,17 +459,17 @@
           </td>
           <td class="py-3 px-4">
             <span class="px-2 py-0.5 rounded-full ${emailCount > 0 ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30' : 'bg-slate-800 text-slate-400'} text-xs font-semibold">
-              ${emailCount}টি
+              ${emailCount}
             </span>
           </td>
           <td class="py-3 px-4 text-slate-400 font-sans text-[11px] whitespace-nowrap">${createdAt}</td>
           <td class="py-3 px-4 text-slate-400 font-sans text-[11px] whitespace-nowrap">${lastActive}</td>
           <td class="py-3 px-4 text-right whitespace-nowrap">
             <a href="/?mailbox=${encodeURIComponent(mb.address)}" target="_blank" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition font-sans text-xs mr-1">
-              ওপেন ইনবক্স ↗
+              Open Inbox ↗
             </a>
-            <button class="px-2 py-1 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-400 transition font-sans text-xs" onclick="deleteMailbox('${escapeHtml(mb.address)}')" title="ইনবক্স ডিলিট করুন">
-              ডিলিট
+            <button class="px-2 py-1 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-400 transition font-sans text-xs" onclick="deleteMailbox('${escapeHtml(mb.address)}')" title="Delete Mailbox">
+              Delete
             </button>
           </td>
         </tr>
@@ -512,7 +512,7 @@
   function handleIncomingEmail(email) {
     // Add to cache
     cachedEmails.unshift(email);
-    badgeEmailCount.textContent = `${cachedEmails.length}টি`;
+    badgeEmailCount.textContent = `${cachedEmails.length}`;
 
     // Increment Stats
     const currentEmails = parseInt(statEmails.textContent.replace(/,/g, '') || '0', 10);
@@ -524,8 +524,8 @@
 
       // Browser Notification if granted
       if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(`🔥 নতুন OTP কোড: ${email.otp}`, {
-          body: `ইনবক্স: ${email.mailbox_address}\nপ্রেরক: ${email.from_name || email.from_address}`,
+        new Notification(`🔥 New OTP Code: ${email.otp}`, {
+          body: `Mailbox: ${email.mailbox_address}\nFrom: ${email.from_name || email.from_address}`,
           icon: '/favicon.ico'
         });
       }
@@ -549,7 +549,7 @@
       // Increment stats
       const currentMailboxes = parseInt(statMailboxes.textContent.replace(/,/g, '') || '0', 10);
       statMailboxes.textContent = (currentMailboxes + 1).toLocaleString();
-      badgeMailboxCount.textContent = `${cachedMailboxes.length}টি`;
+      badgeMailboxCount.textContent = `${cachedMailboxes.length}`;
 
       if (currentTab === 'all-mailboxes') {
         applyFilters();
@@ -563,21 +563,21 @@
       const res = await fetch(`/api/email/${id}`);
       const data = await res.json();
       if (!data.success || !data.email) {
-        alert('ইমেইলটি খুঁজে পাওয়া যায়নি');
+        alert('Email not found');
         return;
       }
 
       const email = data.email;
       modalAdminSubject.textContent = email.subject || '(No Subject)';
-      modalAdminMeta.textContent = `প্রাপক: ${email.mailbox_address} | প্রেরক: ${email.from_name ? `${email.from_name} <${email.from_address}>` : email.from_address} | তারিখ: ${new Date(email.received_at).toLocaleString()}`;
+      modalAdminMeta.textContent = `To: ${email.mailbox_address} | From: ${email.from_name ? `${email.from_name} <${email.from_address}>` : email.from_address} | Date: ${new Date(email.received_at * 1000).toLocaleString('en-US')}`;
 
       // Load HTML or Plain text into iframe
-      const content = email.html_body || `<pre style="font-family: monospace; white-space: pre-wrap; padding: 20px; font-size: 14px;">${escapeHtml(email.text_body || 'মেসেজ বডি ফাঁকা')}</pre>`;
+      const content = email.html_body || `<pre style="font-family: monospace; white-space: pre-wrap; padding: 20px; font-size: 14px;">${escapeHtml(email.text_body || 'Message body is empty')}</pre>`;
       adminModalIframe.srcdoc = content;
 
       adminEmailModal.classList.remove('hidden');
     } catch (err) {
-      alert('ইমেইল ওপেন করতে সমস্যা হয়েছে: ' + err.message);
+      alert('Error opening email: ' + err.message);
     }
   };
 
@@ -588,7 +588,7 @@
 
   // Delete Email
   window.deleteEmail = async function (id) {
-    if (!confirm('আপনি কি সত্যিই এই ইমেইলটি মুছে ফেলতে চান?')) return;
+    if (!confirm('Are you sure you want to permanently delete this email?')) return;
     try {
       const res = await fetch(`/api/admin/email/${id}`, {
         method: 'DELETE',
@@ -599,18 +599,18 @@
         cachedEmails = cachedEmails.filter(e => e.id !== id);
         const row = document.getElementById(`email-row-${id}`);
         if (row) row.remove();
-        badgeEmailCount.textContent = `${cachedEmails.length}টি`;
+        badgeEmailCount.textContent = `${cachedEmails.length}`;
       } else {
-        alert('মুছতে সমস্যা হয়েছে: ' + (data.error || 'Unknown error'));
+        alert('Delete failed: ' + (data.error || 'Unknown error'));
       }
     } catch (err) {
-      alert('সার্ভার এরর: ' + err.message);
+      alert('Server error: ' + err.message);
     }
   };
 
   // Delete Mailbox
   window.deleteMailbox = async function (address) {
-    if (!confirm(`আপনি কি "${address}" ইনবক্স এবং এর সমস্ত মেসেজ চিরতরে মুছে ফেলতে চান?`)) return;
+    if (!confirm(`Are you sure you want to delete mailbox "${address}" and all its messages?`)) return;
     try {
       const res = await fetch(`/api/admin/mailbox/${encodeURIComponent(address)}`, {
         method: 'DELETE',
@@ -620,20 +620,20 @@
       if (data.success) {
         cachedMailboxes = cachedMailboxes.filter(m => m.address !== address);
         renderMailboxes(cachedMailboxes);
-        badgeMailboxCount.textContent = `${cachedMailboxes.length}টি`;
+        badgeMailboxCount.textContent = `${cachedMailboxes.length}`;
         loadStats();
       } else {
-        alert('মুছতে সমস্যা হয়েছে: ' + (data.error || 'Unknown error'));
+        alert('Delete failed: ' + (data.error || 'Unknown error'));
       }
     } catch (err) {
-      alert('সার্ভার এরর: ' + err.message);
+      alert('Server error: ' + err.message);
     }
   };
 
   // Export to CSV
   function exportToCsv() {
     if (!cachedEmails || cachedEmails.length === 0) {
-      alert('এক্সপোর্ট করার মতো কোনো ইমেইল পাওয়া যায়নি।');
+      alert('No emails available to export.');
       return;
     }
 
@@ -645,7 +645,7 @@
       `"${(em.from_address || '').replace(/"/g, '""')}"`,
       `"${(em.subject || '').replace(/"/g, '""')}"`,
       `"${(em.preview || '').replace(/"/g, '""')}"`,
-      `"${new Date(em.received_at).toLocaleString()}"`,
+      `"${new Date(em.received_at * 1000).toLocaleString('en-US')}"`,
     ]);
 
     const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
@@ -663,12 +663,12 @@
   window.copyText = function (text, btn) {
     navigator.clipboard.writeText(text).then(() => {
       const original = btn.innerHTML;
-      btn.innerHTML = `<span class="text-emerald-400 font-bold text-xs">কপি!</span>`;
+      btn.innerHTML = `<span class="text-emerald-400 font-bold text-xs">Copied!</span>`;
       setTimeout(() => {
         btn.innerHTML = original;
       }, 1500);
     }).catch(() => {
-      prompt('কপি করতে Ctrl+C চাপুন:', text);
+      prompt('Press Ctrl+C to copy:', text);
     });
   };
 
@@ -689,10 +689,10 @@
     const ts = typeof timestamp === 'number' && timestamp < 10000000000 ? timestamp * 1000 : new Date(timestamp).getTime();
     const diff = Math.floor((now - ts) / 1000);
 
-    if (diff < 60) return 'এইমাত্র';
-    if (diff < 3600) return `${Math.floor(diff / 60)} মিনিট আগে`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)} ঘণ্টা আগে`;
-    return new Date(ts).toLocaleDateString();
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return new Date(ts).toLocaleDateString('en-US');
   }
 
   // Request browser notification permission once loaded

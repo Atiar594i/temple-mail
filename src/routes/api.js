@@ -474,7 +474,7 @@ apiRouter.post('/admin/auth', (req, res) => {
   if (password === validKey) {
     res.json({ success: true, token: validKey });
   } else {
-    res.status(401).json({ success: false, error: 'ভুল অ্যাডমিন পাসওয়ার্ড' });
+    res.status(401).json({ success: false, error: 'Invalid admin password' });
   }
 });
 
@@ -485,15 +485,15 @@ apiRouter.post('/admin/change-password', verifyAdminAuth, (req, res) => {
     const validKey = getValidAdminKey();
 
     if (!currentPassword || currentPassword !== validKey) {
-      return res.status(400).json({ success: false, error: 'বর্তমান পাসওয়ার্ডটি সঠিক নয়' });
+      return res.status(400).json({ success: false, error: 'Current password is incorrect' });
     }
 
     if (!newPassword || typeof newPassword !== 'string' || newPassword.trim().length < 5) {
-      return res.status(400).json({ success: false, error: 'নতুন পাসওয়ার্ড কমপক্ষে ৫ অক্ষরের হতে হবে' });
+      return res.status(400).json({ success: false, error: 'New password must be at least 5 characters' });
     }
 
     const saved = db.setSetting('admin_password', newPassword.trim());
-    res.json({ success: true, message: 'অ্যাডমিন পাসওয়ার্ড সফলভাবে পরিবর্তিত হয়েছে', newToken: saved });
+    res.json({ success: true, message: 'Admin password updated successfully', newToken: saved });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
