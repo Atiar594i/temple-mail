@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
 import { config } from './config.js';
+import { executeD1Query } from './cloudSync.js';
 
 let dbInstance = null;
 
@@ -32,6 +33,7 @@ export function getDatabase() {
       attachments_json TEXT,
       received_at INTEGER NOT NULL,
       is_read INTEGER DEFAULT 0,
+      otp TEXT,
       FOREIGN KEY (mailbox_address) REFERENCES mailboxes (address) ON DELETE CASCADE
     );
 
@@ -61,6 +63,12 @@ export const db = {
     `);
     stmt.run(normalized, now, now);
 
+    // Asynchronously persist mailbox to Cloudflare D1
+    executeD1Query(
+      'INSERT INTO mailboxes (address, created_at, last_accessed) VALUES (?, ?, ?) ON CONFLICT(address) DO UPDATE SET last_accessed = excluded.last_accessed',
+      [normalized, now, now]
+    ).catch(err => console.warn('[D1 Mailbox Sync Warning]', err.message));
+
     return {
       address: normalized,
       created_at: now,
@@ -86,6 +94,11 @@ export const db = {
     const normalized = address.toLowerCase().trim();
     database.prepare(`DELETE FROM emails WHERE mailbox_address = ?`).run(normalized);
     const result = database.prepare(`DELETE FROM mailboxes WHERE address = ?`).run(normalized);
+
+    // Asynchronously delete from Cloudflare D1
+    executeD1Query('DELETE FROM emails WHERE mailbox_address = ?; DELETE FROM mailboxes WHERE address = ?;', [normalized, normalized])
+      .catch(err => console.warn('[D1 Delete Mailbox Sync Warning]', err.message));
+
     return result.changes > 0;
   },
 
@@ -98,6 +111,7 @@ export const db = {
     htmlBody,
     rawHeaders = '',
     attachments = [],
+    otp = null,
   }) {
     const database = getDatabase();
     const normalized = mailboxAddress.toLowerCase().trim();
@@ -113,8 +127,8 @@ export const db = {
       INSERT INTO emails (
         id, mailbox_address, from_name, from_address,
         subject, text_body, html_body, raw_headers,
-        attachments_json, received_at, is_read
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        attachments_json, received_at, is_read, otp
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
     `);
 
     stmt.run(
@@ -127,21 +141,27 @@ export const db = {
       htmlBody || '',
       typeof rawHeaders === 'object' ? JSON.stringify(rawHeaders) : String(rawHeaders || ''),
       attachmentsJson,
-      now
+      now,
+      otp || null
     );
 
-    // Limit mailbox email count if exceeded
-    const countStmt = database.prepare(`SELECT COUNT(*) as count FROM emails WHERE mailbox_address = ?`);
-    const { count } = countStmt.get(normalized);
-    if (count > config.maxEmailsPerMailbox) {
-      database.prepare(`
-        DELETE FROM emails WHERE id IN (
-          SELECT id FROM emails WHERE mailbox_address = ?
-          ORDER BY received_at ASC
-          LIMIT ?
-        )
-      `).run(normalized, count - config.maxEmailsPerMailbox);
-    }
+    // Asynchronously persist email to Cloudflare D1
+    executeD1Query(
+      'INSERT INTO emails (id, mailbox_address, from_name, from_address, subject, text_body, html_body, raw_headers, attachments_json, received_at, is_read, otp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)',
+      [
+        id,
+        normalized,
+        fromName || '',
+        fromAddress || 'unknown@example.com',
+        subject || '(No Subject)',
+        textBody || '',
+        htmlBody || '',
+        typeof rawHeaders === 'object' ? JSON.stringify(rawHeaders) : String(rawHeaders || ''),
+        attachmentsJson,
+        now,
+        otp || null
+      ]
+    ).catch(err => console.warn('[D1 Email Sync Warning]', err.message));
 
     return this.getEmailById(id, false);
   },
@@ -154,7 +174,7 @@ export const db = {
       SELECT
         id, mailbox_address, from_name, from_address,
         subject, substr(text_body, 1, 160) as preview,
-        received_at, is_read,
+        received_at, is_read, otp,
         length(attachments_json) > 2 as has_attachments
       FROM emails
       WHERE mailbox_address = ?
@@ -178,6 +198,7 @@ export const db = {
     if (markAsRead && !email.is_read) {
       database.prepare(`UPDATE emails SET is_read = 1 WHERE id = ?`).run(id);
       email.is_read = 1;
+      executeD1Query('UPDATE emails SET is_read = 1 WHERE id = ?', [id]).catch(() => {});
     }
 
     let attachments = [];
@@ -197,6 +218,7 @@ export const db = {
   deleteEmailById(id) {
     const database = getDatabase();
     const result = database.prepare(`DELETE FROM emails WHERE id = ?`).run(id);
+    executeD1Query('DELETE FROM emails WHERE id = ?', [id]).catch(() => {});
     return result.changes > 0;
   },
 
@@ -249,7 +271,7 @@ export const db = {
     let query = `
       SELECT id, mailbox_address, from_name, from_address,
              subject, substr(text_body, 1, 200) as preview,
-             received_at, is_read,
+             received_at, is_read, otp,
              length(attachments_json) > 2 as has_attachments
       FROM emails
     `;
@@ -284,6 +306,13 @@ export const db = {
       ON CONFLICT(key) DO UPDATE SET value = excluded.value
     `);
     stmt.run(key, String(value));
+
+    // Asynchronously persist setting to Cloudflare D1
+    executeD1Query(
+      'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+      [key, String(value)]
+    ).catch(err => console.warn('[D1 Setting Sync Warning]', err.message));
+
     return value;
   }
 };

@@ -354,6 +354,7 @@ apiRouter.post('/webhook/email', async (req, res) => {
       }
     }
 
+    const detectedOtp = extractOtp(subject, (text || '') + ' ' + (html || ''));
     const saved = db.saveEmail({
       mailboxAddress: recipientAddress,
       fromName,
@@ -363,6 +364,7 @@ apiRouter.post('/webhook/email', async (req, res) => {
       htmlBody: html || '',
       rawHeaders: headers || {},
       attachments: attachments || [],
+      otp: detectedOtp,
     });
 
     console.log(`[Email Received] To: ${recipientAddress} | From: ${fromAddress} | Subject: "${subject || ''}"`);
@@ -378,7 +380,7 @@ apiRouter.post('/webhook/email', async (req, res) => {
       received_at: saved.received_at,
       is_read: false,
       has_attachments: (attachments && attachments.length > 0),
-      otp: extractOtp(saved.subject, text || html),
+      otp: detectedOtp,
     });
 
     res.json({
@@ -402,13 +404,9 @@ apiRouter.post('/test/simulate', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Recipient "to" is required' });
     }
 
-    const saved = db.saveEmail({
-      mailboxAddress: to,
-      fromName: fromName || 'Temple Verification Team',
-      fromAddress: fromAddress || 'noreply@service.com',
-      subject: subject || 'Your verification code is 849201',
-      textBody: text || 'Your verification code is 849201. It is valid for 10 minutes.',
-      htmlBody: html || `
+    const simSubject = subject || 'Your verification code is 849201';
+    const simText = text || 'Your verification code is 849201. It is valid for 10 minutes.';
+    const simHtml = html || `
         <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f9fafb; border-radius: 8px;">
           <h2 style="color: #4f46e5; margin-top: 0;">Welcome to Temple Mail!</h2>
           <p>Thank you for using our disposable temporary email service.</p>
@@ -418,9 +416,19 @@ apiRouter.post('/test/simulate', async (req, res) => {
           </div>
           <p style="color: #6b7280; font-size: 13px;">This is a simulated email to verify your Temp Mail setup.</p>
         </div>
-      `,
+      `;
+    const simOtp = extractOtp(simSubject, simText + ' ' + simHtml);
+
+    const saved = db.saveEmail({
+      mailboxAddress: to,
+      fromName: fromName || 'Temple Verification Team',
+      fromAddress: fromAddress || 'noreply@service.com',
+      subject: simSubject,
+      textBody: simText,
+      htmlBody: simHtml,
       rawHeaders: { 'x-simulated': 'true' },
       attachments: [],
+      otp: simOtp,
     });
 
     // Broadcast in real-time over SSE

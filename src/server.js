@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { config } from './config.js';
 import { db, getDatabase } from './db.js';
+import { syncDownFromCloud } from './cloudSync.js';
 import { apiRouter } from './routes/api.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -13,6 +14,11 @@ const app = express();
 
 // Initialize DB schema
 getDatabase();
+
+// Restore persistent settings (admin password), mailboxes, and emails from Cloudflare D1
+await syncDownFromCloud().catch(err => {
+  console.error('[CloudSync Startup Error]', err);
+});
 
 // Middlewares
 app.use(cors());

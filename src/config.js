@@ -32,4 +32,8 @@ export const config = {
   dbPath: process.env.DB_PATH || path.join(dataDir, 'tempmail.sqlite'),
   siteTitle: process.env.SITE_TITLE || 'Temple - Instant Disposable Temp Mail',
   maxEmailsPerMailbox: parseInt(process.env.MAX_EMAILS_PER_MAILBOX || '50000', 10),
+  cfAccountId: process.env.CLOUDFLARE_ACCOUNT_ID || '',
+  cfD1DatabaseId: process.env.CLOUDFLARE_D1_DATABASE_ID || '',
+  cfAuthEmail: process.env.CLOUDFLARE_AUTH_EMAIL || '',
+  cfAuthKey: process.env.CLOUDFLARE_AUTH_KEY || '',
 };
